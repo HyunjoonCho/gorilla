@@ -3,9 +3,11 @@ import subprocess
 import threading
 import time
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any, Optional
 
 import requests
+from bfcl_eval.constants.backends import SUPPORTED_LOCAL_BACKENDS
 from bfcl_eval.constants.enums import ModelStyle
 from bfcl_eval.constants.eval_config import LOCAL_SERVER_PORT
 from bfcl_eval.model_handler.base_handler import BaseHandler
@@ -17,6 +19,17 @@ from bfcl_eval.model_handler.utils import (
 from bfcl_eval.utils import contain_multi_turn_interaction
 from openai import OpenAI
 from overrides import EnforceOverrides, final, override
+import torch
+from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
+
+
+class _OpenAICompatCompletionResponse:
+    def __init__(self, text: str, prompt_tokens: int, completion_tokens: int):
+        self.choices = [SimpleNamespace(text=text)]
+        self.usage = SimpleNamespace(
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+        )
 
 
 class OSSHandler(BaseHandler, EnforceOverrides):
@@ -47,6 +60,26 @@ class OSSHandler(BaseHandler, EnforceOverrides):
         self.base_url = os.getenv("REMOTE_OPENAI_BASE_URL", f"http://{self.local_server_endpoint}:{self.local_server_port}/v1")
         self.api_key = os.getenv("REMOTE_OPENAI_API_KEY", "EMPTY")
         self.client = OpenAI(base_url=self.base_url, api_key=self.api_key)
+        self.backend = None
+        self.model = None
+        self._generation_lock = None
+
+    def _resolve_torch_dtype(self, torch_module):
+        dtype_mapping = {
+            "float16": torch_module.float16,
+            "fp16": torch_module.float16,
+            "half": torch_module.float16,
+            "float32": torch_module.float32,
+            "fp32": torch_module.float32,
+            "bfloat16": torch_module.bfloat16,
+            "bf16": torch_module.bfloat16,
+        }
+        normalized_dtype = str(self.dtype).lower()
+        if normalized_dtype not in dtype_mapping:
+            raise ValueError(
+                f"Unsupported dtype '{self.dtype}' for transformers backend. Supported values: {', '.join(dtype_mapping.keys())}."
+            )
+        return dtype_mapping[normalized_dtype]
 
     @override
     def inference(
@@ -87,7 +120,11 @@ class OSSHandler(BaseHandler, EnforceOverrides):
         Spin up a local server for the model.
         If the server is already running, skip the setup.
         """
-        from transformers import AutoConfig, AutoTokenizer
+        if backend not in SUPPORTED_LOCAL_BACKENDS:
+            raise ValueError(
+                f"Backend '{backend}' is not supported. Supported backends: {', '.join(SUPPORTED_LOCAL_BACKENDS)}."
+            )
+        self.backend = backend
 
         # Determine the model source
         if local_model_path is not None:
@@ -140,6 +177,9 @@ class OSSHandler(BaseHandler, EnforceOverrides):
             self.tokenizer = AutoTokenizer.from_pretrained(**load_kwargs)
             config = AutoConfig.from_pretrained(**load_kwargs)
 
+        if self.tokenizer.pad_token_id is None and self.tokenizer.eos_token_id is not None:
+            self.tokenizer.pad_token = self.tokenizer.eos_token
+
         if hasattr(config, "max_position_embeddings"):
             self.max_context_length = config.max_position_embeddings
         elif self.tokenizer.model_max_length is not None:
@@ -157,6 +197,29 @@ class OSSHandler(BaseHandler, EnforceOverrides):
         # Event to signal threads to stop; no need to see logs after server is ready
         # declare early so it always exists
         self._stop_event = threading.Event()
+
+        if backend == "transformers":
+            if skip_server_setup:
+                print(
+                    "`--skip-server-setup` is ignored for backend=transformers. Running direct in-process inference."
+                )
+            try:
+                self.model = AutoModelForCausalLM.from_pretrained(
+                    str(self.model_path_or_id),
+                    trust_remote_code=True,
+                    torch_dtype=self._resolve_torch_dtype(torch),
+                    device_map="auto",
+                )
+            except Exception as e:
+                raise RuntimeError(
+                    f"Failed to load model '{self.model_path_or_id}' with AutoModelForCausalLM for backend=transformers. "
+                    "This model may require a server backend (`vllm`/`sglang`) or a custom handler."
+                ) from e
+
+            self.model.eval()
+            self._generation_lock = threading.Lock()
+            return
+
         try:
             if not skip_server_setup:
                 if backend == "vllm":
@@ -216,9 +279,6 @@ class OSSHandler(BaseHandler, EnforceOverrides):
                         stderr=subprocess.PIPE,  # Capture stderr
                         text=True,  # To get the output as text instead of bytes
                     )
-                else:
-                    raise ValueError(f"Backend {backend} is not supported.")
-
                 def log_subprocess_output(pipe, stop_event):
                     # Read lines until the pipe is closed (EOF)
                     for line in iter(pipe.readline, ""):
@@ -315,7 +375,7 @@ class OSSHandler(BaseHandler, EnforceOverrides):
 
     @override
     def _query_prompting(self, inference_data: dict):
-        # We use the OpenAI Completions API
+        # We use the OpenAI Completions API for server backends and direct generation for transformers.
         function: list[dict] = inference_data["function"]
         message: list[dict] = inference_data["message"]
 
@@ -335,33 +395,103 @@ class OSSHandler(BaseHandler, EnforceOverrides):
                 self.max_context_length - input_token_count - 2,
             )
 
+        start_time = time.time()
+
+        if self.backend == "transformers":
+            api_response = self._query_prompting_transformers(
+                formatted_prompt=formatted_prompt,
+                max_new_tokens=leftover_tokens_count,
+            )
+        else:
+            api_response = self._query_prompting_openai(
+                formatted_prompt=formatted_prompt,
+                max_new_tokens=leftover_tokens_count,
+            )
+        end_time = time.time()
+
+        return api_response, end_time - start_time
+
+    def _query_prompting_openai(
+        self,
+        formatted_prompt: str,
+        max_new_tokens: int,
+    ):
         extra_body = {}
         if hasattr(self, "stop_token_ids"):
             extra_body["stop_token_ids"] = self.stop_token_ids
         if hasattr(self, "skip_special_tokens"):
             extra_body["skip_special_tokens"] = self.skip_special_tokens
 
-        start_time = time.time()
         if len(extra_body) > 0:
-            api_response = self.client.completions.create(
+            return self.client.completions.create(
                 model=self.model_path_or_id,
                 temperature=self.temperature,
                 prompt=formatted_prompt,
-                max_tokens=leftover_tokens_count,
+                max_tokens=max_new_tokens,
                 extra_body=extra_body,
-                timeout=72000,  # Avoid timeout errors
+                timeout=3600,  # Avoid timeout errors
             )
-        else:
-            api_response = self.client.completions.create(
-                model=self.model_path_or_id,
-                temperature=self.temperature,
-                prompt=formatted_prompt,
-                max_tokens=leftover_tokens_count,
-                timeout=72000,  # Avoid timeout errors
-            )
-        end_time = time.time()
 
-        return api_response, end_time - start_time
+        return self.client.completions.create(
+            model=self.model_path_or_id,
+            temperature=self.temperature,
+            prompt=formatted_prompt,
+            max_tokens=max_new_tokens,
+            timeout=3600,  # Avoid timeout errors
+        )
+
+    def _query_prompting_transformers(
+        self,
+        formatted_prompt: str,
+        max_new_tokens: int,
+    ):
+        if self.model is None:
+            raise RuntimeError(
+                "Transformers backend is not initialized. Please call `spin_up_local_server` first."
+            )
+
+        encoded_prompt = self.tokenizer(
+            formatted_prompt,
+            return_tensors="pt",
+            add_special_tokens=False,
+        )
+
+        model_input_device = next(self.model.parameters()).device
+        encoded_prompt = {
+            key: value.to(model_input_device) for key, value in encoded_prompt.items()
+        }
+        input_ids = encoded_prompt["input_ids"]
+        prompt_tokens = int(input_ids.shape[-1])
+
+        generate_kwargs = {
+            "max_new_tokens": max_new_tokens,
+            "pad_token_id": self.tokenizer.pad_token_id,
+            "do_sample": self.temperature > 0,
+        }
+        if self.temperature > 0:
+            generate_kwargs["temperature"] = self.temperature
+        if hasattr(self, "stop_token_ids"):
+            generate_kwargs["eos_token_id"] = self.stop_token_ids
+
+        lock = self._generation_lock or threading.Lock()
+        with lock, torch.inference_mode():
+            generated_ids = self.model.generate(
+                input_ids=input_ids,
+                attention_mask=encoded_prompt.get("attention_mask"),
+                **generate_kwargs,
+            )
+
+        completion_token_ids = generated_ids[0, input_ids.shape[-1] :]
+        completion_tokens = int(completion_token_ids.shape[-1])
+        generated_text = self.tokenizer.decode(
+            completion_token_ids,
+            skip_special_tokens=getattr(self, "skip_special_tokens", True),
+        )
+        return _OpenAICompatCompletionResponse(
+            text=generated_text,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+        )
 
     @override
     def _pre_query_processing_prompting(self, test_entry: dict) -> dict:

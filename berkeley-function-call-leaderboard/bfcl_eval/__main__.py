@@ -7,6 +7,7 @@ from typing import List, Optional
 import typer
 from importlib.metadata import version as _version
 from bfcl_eval._llm_response_generation import main as generation_main
+from bfcl_eval.constants.backends import DEFAULT_LOCAL_BACKEND, SUPPORTED_LOCAL_BACKENDS
 from bfcl_eval.constants.category_mapping import TEST_COLLECTION_MAPPING
 from bfcl_eval.constants.eval_config import (
     DOTENV_PATH,
@@ -121,11 +122,14 @@ def generate(
     num_gpus: int = typer.Option(1, help="The number of GPUs to use."),
     num_threads: Optional[int] = typer.Option(None, help="The number of threads to use."),
     gpu_memory_utilization: float = typer.Option(0.9, help="The GPU memory utilization."),
-    backend: str = typer.Option("sglang", help="The backend to use for the model."),
+    backend: str = typer.Option(
+        DEFAULT_LOCAL_BACKEND,
+        help=f"The backend to use for local OSS models. Supported backends: {', '.join(SUPPORTED_LOCAL_BACKENDS)}.",
+    ),
     skip_server_setup: bool = typer.Option(
         False,
         "--skip-server-setup",
-        help="Skip vLLM/SGLang server setup and use existing endpoint specified by the LOCAL_SERVER_ENDPOINT and LOCAL_SERVER_PORT environment variables.",
+        help="Skip vLLM/SGLang server setup and use an existing endpoint specified by LOCAL_SERVER_ENDPOINT/LOCAL_SERVER_PORT. Ignored for backend=transformers.",
     ),
     local_model_path: Optional[str] = typer.Option(
         None,

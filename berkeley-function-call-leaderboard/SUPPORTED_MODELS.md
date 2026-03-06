@@ -1,6 +1,6 @@
 # Table of Supported Models
 
-Below is a comprehensive table of models supported for running leaderboard evaluations. Each model entry indicates whether it supports native Function Calling (FC) or requires a special prompt format to generate function calls. Models marked with `💻` are intended to be hosted locally (using vllm or sglang), while models without the `💻` icon are accessed via API calls. To quickly see all available models, you can also run the `bfcl models` command.
+Below is a comprehensive table of models supported for running leaderboard evaluations. Each model entry indicates whether it supports native Function Calling (FC) or requires a special prompt format to generate function calls. Models marked with `💻` are intended to be hosted locally (using `vllm`, `sglang`, or `transformers`, depending on compatibility), while models without the `💻` icon are accessed via API calls. To quickly see all available models, you can also run the `bfcl models` command.
 
 ## Function Calling (FC) vs. Prompt Mode
 

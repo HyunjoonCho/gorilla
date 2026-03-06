@@ -11,6 +11,7 @@ from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 from copy import deepcopy
 from typing import Optional
 
+from bfcl_eval.constants.backends import DEFAULT_LOCAL_BACKEND, SUPPORTED_LOCAL_BACKENDS
 from bfcl_eval.constants.eval_config import (
     PROJECT_ROOT,
     RESULT_FILE_PATTERN,
@@ -23,6 +24,38 @@ from bfcl_eval.model_handler.base_handler import BaseHandler
 from bfcl_eval.model_handler.local_inference.base_oss_handler import OSSHandler
 from bfcl_eval.utils import *
 from tqdm import tqdm
+
+
+def _normalize_backend(raw_backend: str) -> str:
+    normalized_backend = (raw_backend or DEFAULT_LOCAL_BACKEND).strip().lower()
+    if normalized_backend not in SUPPORTED_LOCAL_BACKENDS:
+        raise ValueError(
+            f"Unsupported backend '{raw_backend}'. Supported backends: {', '.join(SUPPORTED_LOCAL_BACKENDS)}."
+        )
+    return normalized_backend
+
+
+def _validate_generation_args(args):
+    args.backend = _normalize_backend(args.backend)
+
+    if args.backend != "vllm":
+        if args.enable_lora:
+            raise ValueError(
+                f"`--enable-lora` is only supported for the vLLM backend. Current backend: {args.backend}."
+            )
+        if args.max_lora_rank is not None:
+            raise ValueError(
+                f"`--max-lora-rank` is only supported for the vLLM backend. Current backend: {args.backend}."
+            )
+        if args.lora_modules:
+            raise ValueError(
+                f"`--lora-modules` is only supported for the vLLM backend. Current backend: {args.backend}."
+            )
+
+    if args.backend == "transformers" and args.skip_server_setup:
+        tqdm.write(
+            "Warning: `--skip-server-setup` has no effect with `--backend transformers`; no server startup is performed for this backend."
+        )
 
 
 def get_args():
@@ -38,7 +71,12 @@ def get_args():
     parser.add_argument("--exclude-state-log", action="store_true", default=False)
     parser.add_argument("--num-threads", required=False, type=int)
     parser.add_argument("--num-gpus", default=1, type=int)
-    parser.add_argument("--backend", default="vllm", type=str, choices=["vllm", "sglang"])
+    parser.add_argument(
+        "--backend",
+        default=DEFAULT_LOCAL_BACKEND,
+        type=str,
+        choices=list(SUPPORTED_LOCAL_BACKENDS),
+    )
     parser.add_argument("--gpu-memory-utilization", default=0.9, type=float)
     parser.add_argument("--result-dir", default=None, type=str)
     parser.add_argument("--run-ids", action="store_true", default=False)
@@ -47,7 +85,7 @@ def get_args():
         "--skip-server-setup",
         action="store_true",
         default=False,
-        help="Skip vLLM/SGLang server setup and use existing endpoint specified by the LOCAL_SERVER_ENDPOINT and LOCAL_SERVER_PORT environment variables.",
+        help="Skip vLLM/SGLang server setup and use an existing endpoint specified by LOCAL_SERVER_ENDPOINT/LOCAL_SERVER_PORT. Ignored for backend=transformers.",
     )
     # Optional local model path
     parser.add_argument(
@@ -201,8 +239,8 @@ def multi_threaded_inference(handler, test_case, include_input_log, exclude_stat
         # So we continue the generation process and record the error message as the model response
         error_block = (
             "-" * 100
-            + "\n❗️❗️ Error occurred during inference. Continuing to next test case.\n"
-            + f"❗️❗️ Test case ID: {test_case['id']}, Error: {str(e)}\n"
+            + "\nError occurred during inference. Continuing to next test case.\n"
+            + f"Test case ID: {test_case['id']}, Error: {str(e)}\n"
             + traceback.format_exc(limit=10)
             + "-" * 100
         )
@@ -226,13 +264,24 @@ def generate_results(args, model_name, test_cases_total):
     if isinstance(handler, OSSHandler):
         handler: OSSHandler
         is_oss_model = True
-        # For OSS models, if the user didn't explicitly set the number of threads,
-        # we default to 100 threads to speed up the inference.
-        num_threads = (
-            args.num_threads
-            if args.num_threads is not None
-            else LOCAL_SERVER_MAX_CONCURRENT_REQUEST
-        )
+        if args.backend == "transformers":
+            if args.num_threads is None:
+                num_threads = 1
+            else:
+                num_threads = args.num_threads
+            if num_threads > 1:
+                tqdm.write(
+                    "Warning: `transformers` backend runs in-process and is clamped to `--num-threads 1` to avoid unsafe concurrent generation."
+                )
+                num_threads = 1
+        else:
+            # For server-based OSS models, if the user didn't explicitly set the number of threads,
+            # we default to 100 threads to speed up the inference.
+            num_threads = (
+                args.num_threads
+                if args.num_threads is not None
+                else LOCAL_SERVER_MAX_CONCURRENT_REQUEST
+            )
     else:
         handler: BaseHandler
         is_oss_model = False
@@ -372,6 +421,7 @@ def main(args):
         args.model = [args.model]
     if type(args.test_category) is not list:
         args.test_category = [args.test_category]
+    _validate_generation_args(args)
 
     (
         all_test_categories,
@@ -395,7 +445,7 @@ def main(args):
         for model_name in args.model:
             if MODEL_CONFIG_MAPPING[model_name].is_fc_model:
                 tqdm.write(
-                    "⚠️ Warning: Format sensitivity test cases are only supported for prompting (non-FC) models. "
+                    "Warning: Format sensitivity test cases are only supported for prompting (non-FC) models. "
                     f"Since {model_name} is a FC model based on its config, the format sensitivity test cases will be skipped."
                 )
 
