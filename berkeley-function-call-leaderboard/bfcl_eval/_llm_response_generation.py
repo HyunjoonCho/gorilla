@@ -25,6 +25,8 @@ from bfcl_eval.model_handler.local_inference.base_oss_handler import OSSHandler
 from bfcl_eval.utils import *
 from tqdm import tqdm
 
+SUPPORTED_TOOL_CONSTRAINT_ENGINES = ("none", "guidance")
+
 
 def _normalize_backend(raw_backend: str) -> str:
     normalized_backend = (raw_backend or DEFAULT_LOCAL_BACKEND).strip().lower()
@@ -35,8 +37,35 @@ def _normalize_backend(raw_backend: str) -> str:
     return normalized_backend
 
 
+def _normalize_tool_constraint_engine(raw_engine: str) -> str:
+    normalized_engine = (raw_engine or "none").strip().lower()
+    if normalized_engine not in SUPPORTED_TOOL_CONSTRAINT_ENGINES:
+        raise ValueError(
+            f"Unsupported tool constraint engine '{raw_engine}'. Supported engines: {', '.join(SUPPORTED_TOOL_CONSTRAINT_ENGINES)}."
+        )
+    return normalized_engine
+
+
 def _validate_generation_args(args):
     args.backend = _normalize_backend(args.backend)
+    args.tool_constraint_engine = _normalize_tool_constraint_engine(
+        getattr(args, "tool_constraint_engine", "none")
+    )
+
+    # Defaults for callers that construct args manually.
+    args.guidance_repair_attempts = int(getattr(args, "guidance_repair_attempts", 2))
+    args.guidance_max_calls_per_step = int(
+        getattr(args, "guidance_max_calls_per_step", 4)
+    )
+    args.guidance_max_json_depth = int(getattr(args, "guidance_max_json_depth", 3))
+    args.constraint_strict = bool(getattr(args, "constraint_strict", False))
+
+    if args.guidance_repair_attempts < 0:
+        raise ValueError("`--guidance-repair-attempts` must be >= 0.")
+    if args.guidance_max_calls_per_step <= 0:
+        raise ValueError("`--guidance-max-calls-per-step` must be > 0.")
+    if args.guidance_max_json_depth <= 0:
+        raise ValueError("`--guidance-max-json-depth` must be > 0.")
 
     if args.backend != "vllm":
         if args.enable_lora:
@@ -55,6 +84,11 @@ def _validate_generation_args(args):
     if args.backend == "transformers" and args.skip_server_setup:
         tqdm.write(
             "Warning: `--skip-server-setup` has no effect with `--backend transformers`; no server startup is performed for this backend."
+        )
+
+    if args.tool_constraint_engine != "none" and args.backend != "transformers":
+        tqdm.write(
+            "Warning: tool constraints currently support only `--backend transformers`; constrained mode will fall back to unconstrained generation for this run unless `--constraint-strict` is set."
         )
 
 
@@ -113,20 +147,57 @@ def get_args():
         default=None,
         help="Specify the maximum LoRA rank for vLLM backend.",
     )
+    parser.add_argument(
+        "--tool-constraint-engine",
+        type=str,
+        default="none",
+        choices=list(SUPPORTED_TOOL_CONSTRAINT_ENGINES),
+        help="Structured tool-calling constraint engine for local OSS prompting flow.",
+    )
+    parser.add_argument(
+        "--guidance-repair-attempts",
+        type=int,
+        default=2,
+        help="Number of argument repair retries for Guidance-constrained generation.",
+    )
+    parser.add_argument(
+        "--guidance-max-calls-per-step",
+        type=int,
+        default=4,
+        help="Maximum constrained tool calls generated within one multi-step turn.",
+    )
+    parser.add_argument(
+        "--guidance-max-json-depth",
+        type=int,
+        default=3,
+        help="Maximum recursion depth for constrained JSON argument generation.",
+    )
+    parser.add_argument(
+        "--constraint-strict",
+        action="store_true",
+        default=False,
+        help="Fail instead of falling back when constrained generation is unavailable or incompatible.",
+    )
     args = parser.parse_args()
     print(f"Parsed arguments: {args}")
 
     return args
 
 
-def build_handler(model_name, temperature):
+def build_handler(model_name, temperature, **handler_kwargs):
     config = MODEL_CONFIG_MAPPING[model_name]
-    handler = config.model_handler(
-        model_name=config.model_name,
-        temperature=temperature,
-        registry_name=model_name,
-        is_fc_model=config.is_fc_model,
-    )
+    model_handler_cls = config.model_handler
+
+    base_kwargs = {
+        "model_name": config.model_name,
+        "temperature": temperature,
+        "registry_name": model_name,
+        "is_fc_model": config.is_fc_model,
+    }
+    if issubclass(model_handler_cls, OSSHandler):
+        base_kwargs.update(handler_kwargs)
+
+    handler = model_handler_cls(**base_kwargs)
     return handler
 
 
@@ -259,7 +330,15 @@ def multi_threaded_inference(handler, test_case, include_input_log, exclude_stat
 
 
 def generate_results(args, model_name, test_cases_total):
-    handler = build_handler(model_name, args.temperature)
+    handler = build_handler(
+        model_name,
+        args.temperature,
+        tool_constraint_engine=args.tool_constraint_engine,
+        guidance_repair_attempts=args.guidance_repair_attempts,
+        guidance_max_calls_per_step=args.guidance_max_calls_per_step,
+        guidance_max_json_depth=args.guidance_max_json_depth,
+        constraint_strict=args.constraint_strict,
+    )
 
     if isinstance(handler, OSSHandler):
         handler: OSSHandler

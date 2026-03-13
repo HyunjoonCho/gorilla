@@ -11,6 +11,11 @@ from bfcl_eval.constants.backends import SUPPORTED_LOCAL_BACKENDS
 from bfcl_eval.constants.enums import ModelStyle
 from bfcl_eval.constants.eval_config import LOCAL_SERVER_PORT
 from bfcl_eval.model_handler.base_handler import BaseHandler
+from bfcl_eval.model_handler.local_inference.tool_constraints import (
+    GuidanceConstraintConfig,
+    GuidanceConstraintEngine,
+    GuidanceConstraintError,
+)
 from bfcl_eval.model_handler.utils import (
     default_decode_ast_prompting,
     default_decode_execute_prompting,
@@ -63,6 +68,31 @@ class OSSHandler(BaseHandler, EnforceOverrides):
         self.backend = None
         self.model = None
         self._generation_lock = None
+        self._guidance_constraint_engine = None
+        self._constraint_fallback_warnings_emitted = set()
+
+        self.tool_constraint_engine = str(
+            getattr(self, "tool_constraint_engine", "none")
+        ).lower()
+        if self.tool_constraint_engine not in {"none", "guidance"}:
+            raise ValueError(
+                f"Unsupported tool constraint engine '{self.tool_constraint_engine}'. Supported values: none, guidance."
+            )
+        self.guidance_repair_attempts = int(
+            getattr(self, "guidance_repair_attempts", 2)
+        )
+        self.guidance_max_calls_per_step = int(
+            getattr(self, "guidance_max_calls_per_step", 4)
+        )
+        self.guidance_max_json_depth = int(getattr(self, "guidance_max_json_depth", 3))
+        self.constraint_strict = bool(getattr(self, "constraint_strict", False))
+
+        if self.guidance_repair_attempts < 0:
+            raise ValueError("guidance_repair_attempts must be >= 0.")
+        if self.guidance_max_calls_per_step <= 0:
+            raise ValueError("guidance_max_calls_per_step must be > 0.")
+        if self.guidance_max_json_depth <= 0:
+            raise ValueError("guidance_max_json_depth must be > 0.")
 
     def _resolve_torch_dtype(self, torch_module):
         dtype_mapping = {
@@ -398,11 +428,16 @@ class OSSHandler(BaseHandler, EnforceOverrides):
         start_time = time.time()
 
         if self.backend == "transformers":
-            api_response = self._query_prompting_transformers(
+            api_response = self._query_prompting_transformers_with_fallback(
                 formatted_prompt=formatted_prompt,
+                function=function,
                 max_new_tokens=leftover_tokens_count,
             )
         else:
+            if self.tool_constraint_engine != "none":
+                self._handle_constraint_incompatibility_or_raise(
+                    "Guidance-constrained generation is only available for backend=transformers. Falling back to unconstrained server generation."
+                )
             api_response = self._query_prompting_openai(
                 formatted_prompt=formatted_prompt,
                 max_new_tokens=leftover_tokens_count,
@@ -441,6 +476,83 @@ class OSSHandler(BaseHandler, EnforceOverrides):
         )
 
     def _query_prompting_transformers(
+        self,
+        formatted_prompt: str,
+        max_new_tokens: int,
+    ):
+        return self._query_prompting_transformers_unconstrained(
+            formatted_prompt=formatted_prompt,
+            max_new_tokens=max_new_tokens,
+        )
+
+    def _query_prompting_transformers_with_fallback(
+        self,
+        formatted_prompt: str,
+        function: list[dict],
+        max_new_tokens: int,
+    ):
+        if self.tool_constraint_engine != "guidance":
+            return self._query_prompting_transformers_unconstrained(
+                formatted_prompt=formatted_prompt,
+                max_new_tokens=max_new_tokens,
+            )
+
+        incompatibility_reason = self._guidance_incompatibility_reason()
+        if incompatibility_reason is not None:
+            self._handle_constraint_incompatibility_or_raise(incompatibility_reason)
+            return self._query_prompting_transformers_unconstrained(
+                formatted_prompt=formatted_prompt,
+                max_new_tokens=max_new_tokens,
+            )
+
+        try:
+            constrained_response = self._query_prompting_transformers_guidance(
+                formatted_prompt=formatted_prompt,
+                function=function,
+                max_new_tokens=max_new_tokens,
+            )
+            return constrained_response
+        except GuidanceConstraintError as exc:
+            self._handle_constraint_incompatibility_or_raise(
+                f"Guidance constrained generation failed ({exc}). Falling back to unconstrained transformers generation."
+            )
+            return self._query_prompting_transformers_unconstrained(
+                formatted_prompt=formatted_prompt,
+                max_new_tokens=max_new_tokens,
+            )
+        except Exception as exc:
+            self._handle_constraint_incompatibility_or_raise(
+                f"Unexpected constrained-generation error ({exc}). Falling back to unconstrained transformers generation."
+            )
+            return self._query_prompting_transformers_unconstrained(
+                formatted_prompt=formatted_prompt,
+                max_new_tokens=max_new_tokens,
+            )
+
+    def _query_prompting_transformers_guidance(
+        self,
+        formatted_prompt: str,
+        function: list[dict],
+        max_new_tokens: int,
+    ) -> _OpenAICompatCompletionResponse:
+        constraint_engine = self._get_guidance_constraint_engine()
+        lock = self._generation_lock or threading.Lock()
+        with lock:
+            constrained_text, _ = constraint_engine.generate(
+                formatted_prompt=formatted_prompt,
+                tools=function,
+                max_new_tokens=max_new_tokens,
+            )
+        prompt_tokens = len(self.tokenizer.tokenize(formatted_prompt))
+        completion_tokens = len(self.tokenizer.tokenize(constrained_text))
+        response = _OpenAICompatCompletionResponse(
+            text=constrained_text,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+        )
+        return response
+
+    def _query_prompting_transformers_unconstrained(
         self,
         formatted_prompt: str,
         max_new_tokens: int,
@@ -492,6 +604,43 @@ class OSSHandler(BaseHandler, EnforceOverrides):
             prompt_tokens=prompt_tokens,
             completion_tokens=completion_tokens,
         )
+
+    def _get_guidance_constraint_engine(self) -> GuidanceConstraintEngine:
+        if self._guidance_constraint_engine is None:
+            self._guidance_constraint_engine = GuidanceConstraintEngine(
+                model=self.model,
+                tokenizer=self.tokenizer,
+                config=GuidanceConstraintConfig(
+                    repair_attempts=self.guidance_repair_attempts,
+                    max_calls_per_step=self.guidance_max_calls_per_step,
+                    max_json_depth=self.guidance_max_json_depth,
+                ),
+            )
+        return self._guidance_constraint_engine
+
+    def _guidance_incompatibility_reason(self) -> Optional[str]:
+        if self.backend != "transformers":
+            return (
+                "Guidance-constrained generation is only supported when backend=transformers."
+            )
+        if self.model is None or self.tokenizer is None:
+            return "Transformers backend model/tokenizer is not initialized."
+        if (
+            type(self).decode_execute is not OSSHandler.decode_execute
+            or type(self).decode_ast is not OSSHandler.decode_ast
+        ):
+            return (
+                f"Handler '{type(self).__name__}' overrides decode methods and is not yet compatible with Guidance-constrained prompting output."
+            )
+        return None
+
+    def _handle_constraint_incompatibility_or_raise(self, message: str) -> None:
+        if self.constraint_strict:
+            raise RuntimeError(message)
+        if message in self._constraint_fallback_warnings_emitted:
+            return
+        self._constraint_fallback_warnings_emitted.add(message)
+        print(f"Warning: {message}")
 
     @override
     def _pre_query_processing_prompting(self, test_entry: dict) -> dict:

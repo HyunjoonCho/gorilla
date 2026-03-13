@@ -155,6 +155,9 @@ For model names containing `{...}`, multiple versions are available. For example
 
 ## Additional Requirements for Certain Models
 
+- **Guidance-constrained local prompting (optional):**
+  Install `pip install -e .[oss_eval_transformers,oss_eval_guidance]` and run generation with `--backend transformers --tool-constraint-engine guidance`. This path currently targets OSS prompting handlers that use the default `OSSHandler` prompt decoding behavior; incompatible handlers automatically fall back unless `--constraint-strict` is set.
+
 - **Gemini Models:**
   For `Gemini` models, we use the Google AI Studio API for inference. Ensure you have set the `GOOGLE_API_KEY` in your `.env` file.
 

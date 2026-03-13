@@ -77,6 +77,7 @@ For locally-hosted models, we only implement prompting methods to maintain code 
 - Implement the `_format_prompt` method in your handler.
 - Other methods from the `Prompting Methods` section in `base_oss_handler.py` are already implemented, but you may override them if necessary.
 - `OSSHandler` now dispatches local inference by backend (`vllm`, `sglang`, `transformers`). If your model requires backend-specific behavior, keep that logic centralized in `base_oss_handler.py` whenever possible instead of duplicating it across model handlers.
+- Guidance-constrained tool calling (`--tool-constraint-engine guidance`) is currently wired for `transformers` prompting flow and assumes the default OSS prompting decoders. If your handler overrides `decode_ast`/`decode_execute`, constrained mode will fall back unless `--constraint-strict` is enabled.
 
 **Common Requirements for All Handlers:**  
 Regardless of mode or model type, you should implement the following methods to convert raw model response (output of `_parse_query_response_xxx`) into standard formats expected by the evaluation pipeline:

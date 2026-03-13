@@ -167,6 +167,31 @@ def generate(
         "--lora-modules",
         help='Specify the path to the LoRA modules for vLLM backend in name="path" format. Can be specified multiple times.',
     ),
+    tool_constraint_engine: str = typer.Option(
+        "none",
+        "--tool-constraint-engine",
+        help="Structured tool-calling constraint engine for local OSS prompting flow (`none` or `guidance`).",
+    ),
+    guidance_repair_attempts: int = typer.Option(
+        2,
+        "--guidance-repair-attempts",
+        help="Number of argument repair retries for Guidance-constrained generation.",
+    ),
+    guidance_max_calls_per_step: int = typer.Option(
+        4,
+        "--guidance-max-calls-per-step",
+        help="Maximum constrained tool calls generated within one multi-step turn.",
+    ),
+    guidance_max_json_depth: int = typer.Option(
+        3,
+        "--guidance-max-json-depth",
+        help="Maximum recursion depth for constrained JSON argument generation.",
+    ),
+    constraint_strict: bool = typer.Option(
+        False,
+        "--constraint-strict",
+        help="Fail instead of falling back when constrained generation is unavailable or incompatible.",
+    ),
 ):
     """
     Generate the LLM response for one or more models on a test-category (same as openfunctions_evaluation.py).
@@ -190,6 +215,11 @@ def generate(
         enable_lora=enable_lora,
         max_lora_rank=max_lora_rank,
         lora_modules=lora_modules,
+        tool_constraint_engine=tool_constraint_engine,
+        guidance_repair_attempts=guidance_repair_attempts,
+        guidance_max_calls_per_step=guidance_max_calls_per_step,
+        guidance_max_json_depth=guidance_max_json_depth,
+        constraint_strict=constraint_strict,
     )
     load_dotenv(dotenv_path=DOTENV_PATH, verbose=True, override=True)  # Load the .env file
     generation_main(args)

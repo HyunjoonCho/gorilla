@@ -469,6 +469,13 @@ class BaseHandler:
             current_turn_message: list[dict]
 
             if str(turn_idx) in holdout_function:
+                newly_available_functions = holdout_function[str(turn_idx)]
+                runtime_functions = inference_data.get("function")
+                if isinstance(runtime_functions, list):
+                    runtime_functions.extend(newly_available_functions)
+                else:
+                    test_entry["function"].extend(newly_available_functions)
+
                 assert (
                     len(current_turn_message) == 0
                 ), "Holdout turn should not have user message."
@@ -476,7 +483,7 @@ class BaseHandler:
                     {
                         "role": "user",
                         "content": DEFAULT_USER_PROMPT_FOR_ADDITIONAL_FUNCTION_PROMPTING.format(
-                            functions=holdout_function[str(turn_idx)]
+                            functions=newly_available_functions
                         ),
                     }
                 ]
