@@ -1,4 +1,4 @@
-import importlib
+import guidance
 import json
 import re
 from dataclasses import dataclass
@@ -8,11 +8,6 @@ from typing import Any, Optional
 NO_TOOL_SELECTION = "__bfcl_final_answer__"
 INTEGER_PATTERN = r"-?\d+"
 NUMBER_PATTERN = r"-?(?:\d+(?:\.\d+)?|\.\d+)"
-PINNED_STACK = {
-    "guidance": "0.3.0",
-    "guidance_stitch": "0.1.5",
-    "llguidance": "1.1.0",
-}
 TYPE_MAP = {
     "dict": "dict",
     "dictionary": "dict",
@@ -37,10 +32,6 @@ TYPE_MAP = {
 
 
 class GuidanceConstraintError(RuntimeError):
-    pass
-
-
-class GuidanceUnavailableError(GuidanceConstraintError):
     pass
 
 
@@ -95,24 +86,6 @@ class PinnedGuidanceRuntime:
         if self._guidance is not None:
             return self._guidance
 
-        modules = {}
-        for module_name, expected_version in PINNED_STACK.items():
-            try:
-                module = importlib.import_module(module_name)
-            except Exception as exc:
-                pkg = module_name.replace("_", "-")
-                raise GuidanceUnavailableError(
-                    f"Pinned Guidance stack is unavailable. Install {pkg}=={expected_version}."
-                ) from exc
-            actual_version = getattr(module, "__version__", "unknown")
-            if actual_version != expected_version:
-                pkg = module_name.replace("_", "-")
-                raise GuidanceUnavailableError(
-                    f"Pinned Guidance stack mismatch. Expected {pkg}=={expected_version}, found {actual_version}."
-                )
-            modules[module_name] = module
-
-        guidance = modules["guidance"]
         try:
             self._lm = guidance.models.Transformers(
                 model=self.model,
@@ -121,7 +94,7 @@ class PinnedGuidanceRuntime:
             )
         except Exception as exc:
             raise GuidanceGenerationError(
-                "Failed to initialize guidance.models.Transformers for the pinned Guidance stack."
+                "Failed to initialize guidance.models.Transformers."
             ) from exc
         self._guidance = guidance
         return guidance
