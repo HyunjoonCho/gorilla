@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Any, Optional
 
 
-NO_TOOL_SELECTION = "__bfcl_final_answer__"
+NO_TOOL_SELECTION = "DONE"
 INTEGER_PATTERN = r"-?\d+"
 NUMBER_PATTERN = r"-?(?:\d+(?:\.\d+)?|\.\d+)"
 TYPE_MAP = {
@@ -124,7 +124,7 @@ class GuidanceConstraintEngine:
             return "[]", {"constraint_engine": "guidance", "selected_tools": []}
 
         selected_calls: list[tuple[str, dict[str, Any]]] = []
-        options = [NO_TOOL_SELECTION, *tool_map]
+        options = [*tool_map, NO_TOOL_SELECTION]
         for _ in range(self.config.max_calls_per_step):
             name = self._select(
                 self._prompt(
