@@ -3,7 +3,6 @@ from bfcl_eval.model_handler.local_inference.tool_constraints.guidance_constrain
     GuidanceConstraintEngine,
     GuidanceConstraintError,
     GuidanceGenerationError,
-    GuidanceUnavailableError,
 )
 
 __all__ = [
@@ -11,5 +10,4 @@ __all__ = [
     "GuidanceConstraintEngine",
     "GuidanceConstraintError",
     "GuidanceGenerationError",
-    "GuidanceUnavailableError",
 ]
