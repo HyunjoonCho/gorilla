@@ -175,7 +175,7 @@ def generate(
     guidance_repair_attempts: int = typer.Option(
         2,
         "--guidance-repair-attempts",
-        help="Number of argument repair retries for Guidance-constrained generation.",
+        help="Number of whole-object regeneration attempts after constrained-argument validation fails.",
     ),
     guidance_max_calls_per_step: int = typer.Option(
         4,

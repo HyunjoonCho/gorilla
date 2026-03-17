@@ -8,18 +8,44 @@ from typing import Any, Optional
 NO_TOOL_SELECTION = "__bfcl_final_answer__"
 INTEGER_PATTERN = r"-?\d+"
 NUMBER_PATTERN = r"-?(?:\d+(?:\.\d+)?|\.\d+)"
+PINNED_STACK = {
+    "guidance": "0.3.0",
+    "guidance_stitch": "0.1.5",
+    "llguidance": "1.1.0",
+}
+TYPE_MAP = {
+    "dict": "dict",
+    "dictionary": "dict",
+    "object": "object",
+    "map": "dict",
+    "array": "array",
+    "list": "array",
+    "tuple": "array",
+    "str": "string",
+    "string": "string",
+    "any": "string",
+    "int": "integer",
+    "integer": "integer",
+    "long": "integer",
+    "float": "float",
+    "double": "float",
+    "number": "float",
+    "decimal": "float",
+    "bool": "boolean",
+    "boolean": "boolean",
+}
 
 
 class GuidanceConstraintError(RuntimeError):
-    """Base error for Guidance-constrained generation."""
+    pass
 
 
 class GuidanceUnavailableError(GuidanceConstraintError):
-    """Raised when Guidance is unavailable in the current environment."""
+    pass
 
 
 class GuidanceGenerationError(GuidanceConstraintError):
-    """Raised when Guidance constraint generation fails."""
+    pass
 
 
 @dataclass
@@ -29,25 +55,90 @@ class GuidanceConstraintConfig:
     max_json_depth: int = 3
 
 
+class PinnedGuidanceRuntime:
+    def __init__(self, model: Any, tokenizer: Any) -> None:
+        self.model = model
+        self.tokenizer = tokenizer
+        self._guidance = None
+        self._lm = None
+
+    def select(self, prompt: str, options: list[str], key: str) -> str:
+        if not options:
+            raise GuidanceGenerationError("Cannot run select with empty options.")
+        guidance = self._ensure_loaded()
+        try:
+            lm = self._lm + prompt
+            lm += guidance.select(options, name=key)
+            return str(lm[key]).strip()
+        except Exception as exc:
+            raise GuidanceGenerationError(f"Guidance select failed for '{key}': {exc}") from exc
+
+    def gen(
+        self,
+        prompt: str,
+        key: str,
+        max_tokens: int,
+        regex: Optional[str] = None,
+    ) -> str:
+        guidance = self._ensure_loaded()
+        kwargs = {"name": key, "max_tokens": max_tokens}
+        if regex is not None:
+            kwargs["regex"] = regex
+        try:
+            lm = self._lm + prompt
+            lm += guidance.gen(**kwargs)
+            return str(lm[key]).strip()
+        except Exception as exc:
+            raise GuidanceGenerationError(f"Guidance generation failed for '{key}': {exc}") from exc
+
+    def _ensure_loaded(self):
+        if self._guidance is not None:
+            return self._guidance
+
+        modules = {}
+        for module_name, expected_version in PINNED_STACK.items():
+            try:
+                module = importlib.import_module(module_name)
+            except Exception as exc:
+                pkg = module_name.replace("_", "-")
+                raise GuidanceUnavailableError(
+                    f"Pinned Guidance stack is unavailable. Install {pkg}=={expected_version}."
+                ) from exc
+            actual_version = getattr(module, "__version__", "unknown")
+            if actual_version != expected_version:
+                pkg = module_name.replace("_", "-")
+                raise GuidanceUnavailableError(
+                    f"Pinned Guidance stack mismatch. Expected {pkg}=={expected_version}, found {actual_version}."
+                )
+            modules[module_name] = module
+
+        guidance = modules["guidance"]
+        try:
+            self._lm = guidance.models.Transformers(
+                model=self.model,
+                tokenizer=self.tokenizer,
+                echo=False,
+            )
+        except Exception as exc:
+            raise GuidanceGenerationError(
+                "Failed to initialize guidance.models.Transformers for the pinned Guidance stack."
+            ) from exc
+        self._guidance = guidance
+        return guidance
+
+
 class GuidanceConstraintEngine:
-    """
-    Guidance-backed constrained tool generation for prompting models.
-
-    The engine enforces tool-name selection with `guidance.select` and generates
-    arguments with schema-aware strategies, followed by post-validation and repair.
-    """
-
     def __init__(
         self,
         model: Any,
         tokenizer: Any,
         config: GuidanceConstraintConfig,
+        runtime: Optional[PinnedGuidanceRuntime] = None,
     ) -> None:
         self.model = model
         self.tokenizer = tokenizer
         self.config = config
-        self._guidance_module = None
-        self._guidance_model = None
+        self._runtime = runtime
 
     def generate(
         self,
@@ -55,227 +146,93 @@ class GuidanceConstraintEngine:
         tools: list[dict],
         max_new_tokens: int,
     ) -> tuple[str, dict[str, Any]]:
-        if not tools:
-            return "[]", {"constraint_engine": "guidance", "selected_tools": []}
-
-        self._build_guidance_model()
-
         tool_map = {tool.get("name"): tool for tool in tools if tool.get("name")}
         if not tool_map:
             return "[]", {"constraint_engine": "guidance", "selected_tools": []}
 
-        tool_names = list(tool_map.keys())
         selected_calls: list[tuple[str, dict[str, Any]]] = []
-
+        options = [NO_TOOL_SELECTION, *tool_map]
         for _ in range(self.config.max_calls_per_step):
-            selected_name = self._select_tool_name(
-                formatted_prompt=formatted_prompt,
-                tool_names=tool_names,
-                selected_calls=selected_calls,
+            name = self._select(
+                self._prompt(
+                    formatted_prompt,
+                    selected_calls,
+                    "Choose the next tool name or the final-answer sentinel.",
+                    f"Options: {json.dumps(options, ensure_ascii=False)}",
+                ),
+                options,
+                "tool_name",
             )
-            if selected_name == NO_TOOL_SELECTION:
+            if name == NO_TOOL_SELECTION:
                 break
-            if selected_name not in tool_map:
-                raise GuidanceGenerationError(
-                    f"Guidance selected unknown tool '{selected_name}'."
+            selected_calls.append(
+                (
+                    name,
+                    self._generate_arguments(
+                        formatted_prompt,
+                        name,
+                        tool_map[name].get("parameters", {}),
+                        selected_calls,
+                        max_new_tokens,
+                    ),
                 )
-
-            tool_definition = tool_map[selected_name]
-            arguments = self._generate_and_validate_arguments(
-                formatted_prompt=formatted_prompt,
-                tool_name=selected_name,
-                tool_definition=tool_definition,
-                selected_calls=selected_calls,
-                max_new_tokens=max_new_tokens,
             )
-            selected_calls.append((selected_name, arguments))
 
-        output_text = self._render_python_tool_calls(selected_calls)
-        metadata = {
+        return self._render_calls(selected_calls), {
             "constraint_engine": "guidance",
             "selected_tools": [name for name, _ in selected_calls],
             "selected_tool_count": len(selected_calls),
         }
-        return output_text, metadata
 
-    def _select_tool_name(
-        self,
-        formatted_prompt: str,
-        tool_names: list[str],
-        selected_calls: list[tuple[str, dict[str, Any]]],
-    ) -> str:
-        options = [NO_TOOL_SELECTION, *tool_names]
-        prompt = (
-            "You are selecting the next tool call for a function-calling task.\n"
-            "Choose exactly one option from the allowed tool names.\n"
-            f"Conversation context:\n{formatted_prompt}\n\n"
-            f"Previously selected tool calls: {self._render_python_tool_calls(selected_calls)}\n"
-            "If no more tool call is needed, choose the final-answer option.\n"
-            "Output selection:\n"
-        )
-        return self._run_select(prompt=prompt, options=options, key="tool_name")
-
-    def _generate_and_validate_arguments(
-        self,
-        formatted_prompt: str,
-        tool_name: str,
-        tool_definition: dict,
-        selected_calls: list[tuple[str, dict[str, Any]]],
-        max_new_tokens: int,
-    ) -> dict[str, Any]:
-        schema = self._normalize_object_schema(tool_definition.get("parameters", {}))
-        arguments = self._generate_object_value(
-            formatted_prompt=formatted_prompt,
-            tool_name=tool_name,
-            schema=schema,
-            selected_calls=selected_calls,
-            depth=0,
-            max_new_tokens=max_new_tokens,
-        )
-
-        last_errors = []
-        for _ in range(self.config.repair_attempts + 1):
-            is_valid, errors = self.validate_arguments(arguments, schema)
-            if is_valid:
-                return arguments
-            last_errors = errors
-            arguments = self._repair_arguments(
-                formatted_prompt=formatted_prompt,
-                tool_name=tool_name,
-                schema=schema,
-                selected_calls=selected_calls,
-                current_arguments=arguments,
-                errors=errors,
-                max_new_tokens=max_new_tokens,
-            )
-
-        raise GuidanceGenerationError(
-            f"Failed to validate constrained arguments for tool '{tool_name}': {last_errors}"
-        )
-
-    def _repair_arguments(
+    def _generate_arguments(
         self,
         formatted_prompt: str,
         tool_name: str,
         schema: dict,
         selected_calls: list[tuple[str, dict[str, Any]]],
-        current_arguments: dict[str, Any],
-        errors: list[dict[str, str]],
         max_new_tokens: int,
     ) -> dict[str, Any]:
-        repaired = dict(current_arguments)
-        properties = schema.get("properties", {})
-        required_fields = set(schema.get("required", []))
-
-        for error in errors:
-            error_kind = error.get("kind", "")
-            field = self._extract_root_field(error.get("path", ""))
-            if not field:
-                continue
-
-            if error_kind == "unexpected_field":
-                repaired.pop(field, None)
-                continue
-
-            field_schema = properties.get(field, {})
-            if error_kind in {"missing_required", "type_mismatch", "enum_mismatch", "depth_exceeded"}:
-                regenerated = self._generate_value_for_schema(
-                    formatted_prompt=formatted_prompt,
-                    tool_name=tool_name,
-                    field_name=field,
-                    field_schema=field_schema,
-                    selected_calls=selected_calls,
-                    depth=0,
-                    max_new_tokens=max_new_tokens,
-                )
-                repaired[field] = regenerated
-
-        for field in list(repaired.keys()):
-            if field not in properties:
-                continue
-            repaired[field] = self._coerce_value_to_schema(
-                repaired[field], properties[field], depth=2
+        schema = self._object_schema(schema)
+        errors = []
+        for _ in range(self.config.repair_attempts + 1):
+            arguments = self._generate_object(
+                formatted_prompt,
+                tool_name,
+                schema,
+                selected_calls,
+                0,
+                max_new_tokens,
             )
-
-        for field in required_fields:
-            if field in repaired:
-                continue
-            regenerated = self._generate_value_for_schema(
-                formatted_prompt=formatted_prompt,
-                tool_name=tool_name,
-                field_name=field,
-                field_schema=properties.get(field, {}),
-                selected_calls=selected_calls,
-                depth=0,
-                max_new_tokens=max_new_tokens,
-            )
-            repaired[field] = regenerated
-
-        return repaired
+            valid, errors = self.validate_arguments(arguments, schema)
+            if valid:
+                return arguments
+        raise GuidanceGenerationError(
+            f"Failed to validate constrained arguments for tool '{tool_name}': {errors}"
+        )
 
     def validate_arguments(
-        self, arguments: dict[str, Any], schema: dict
+        self,
+        arguments: dict[str, Any],
+        schema: dict,
     ) -> tuple[bool, list[dict[str, str]]]:
         errors: list[dict[str, str]] = []
-
-        schema_type = self._normalize_type(schema.get("type", "dict"))
-        if schema_type not in {"dict", "object"}:
-            errors.append(
-                {
-                    "kind": "schema_shape",
-                    "path": "$",
-                    "message": "Tool parameter schema root must be object/dict.",
-                }
-            )
-            return False, errors
-
+        if self._type(schema.get("type", "dict")) not in {"dict", "object"}:
+            return False, [self._error("schema_shape", "$", "Tool parameter schema root must be object/dict.")]
         if not isinstance(arguments, dict):
-            errors.append(
-                {
-                    "kind": "type_mismatch",
-                    "path": "$",
-                    "message": "Tool arguments must be a dictionary.",
-                }
-            )
-            return False, errors
+            return False, [self._error("type_mismatch", "$", "Tool arguments must be a dictionary.")]
 
         properties = schema.get("properties", {})
-        required_fields = set(schema.get("required", []))
-
-        for field in required_fields:
+        for field in schema.get("required", []):
             if field not in arguments:
-                errors.append(
-                    {
-                        "kind": "missing_required",
-                        "path": field,
-                        "message": f"Missing required field '{field}'.",
-                    }
-                )
-
-        for field in arguments:
+                errors.append(self._error("missing_required", field, f"Missing required field '{field}'."))
+        for field, value in arguments.items():
             if field not in properties:
-                errors.append(
-                    {
-                        "kind": "unexpected_field",
-                        "path": field,
-                        "message": f"Unexpected field '{field}'.",
-                    }
-                )
-
-        for field_name, field_value in arguments.items():
-            if field_name not in properties:
+                errors.append(self._error("unexpected_field", field, f"Unexpected field '{field}'."))
                 continue
-            self._validate_value_against_schema(
-                value=field_value,
-                schema=properties[field_name],
-                path=field_name,
-                depth=1,
-                errors=errors,
-            )
-
+            self._validate(value, properties[field], field, 1, errors)
         return len(errors) == 0, errors
 
-    def _validate_value_against_schema(
+    def _validate(
         self,
         value: Any,
         schema: dict,
@@ -285,135 +242,63 @@ class GuidanceConstraintEngine:
     ) -> None:
         if depth > self.config.max_json_depth:
             errors.append(
-                {
-                    "kind": "depth_exceeded",
-                    "path": path,
-                    "message": f"JSON depth exceeded the configured max depth ({self.config.max_json_depth}).",
-                }
+                self._error(
+                    "depth_exceeded",
+                    path,
+                    f"JSON depth exceeded the configured max depth ({self.config.max_json_depth}).",
+                )
             )
             return
 
         enum_values = schema.get("enum")
         if isinstance(enum_values, list):
             if value not in enum_values:
-                errors.append(
-                    {
-                        "kind": "enum_mismatch",
-                        "path": path,
-                        "message": f"Value '{value}' is not in enum list.",
-                    }
-                )
+                errors.append(self._error("enum_mismatch", path, f"Value '{value}' is not in enum list."))
             return
 
-        normalized_type = self._normalize_type(schema.get("type"))
-
-        if normalized_type in {"dict", "object"}:
+        schema_type = self._type(schema.get("type"))
+        if schema_type in {"dict", "object"}:
             if not isinstance(value, dict):
-                errors.append(
-                    {
-                        "kind": "type_mismatch",
-                        "path": path,
-                        "message": f"Expected object/dict at '{path}'.",
-                    }
-                )
+                errors.append(self._error("type_mismatch", path, f"Expected object/dict at '{path}'."))
                 return
-            nested_properties = schema.get("properties", {})
-            nested_required = set(schema.get("required", []))
-            for field in nested_required:
+            properties = schema.get("properties", {})
+            for field in schema.get("required", []):
                 if field not in value:
-                    nested_path = f"{path}.{field}"
-                    errors.append(
-                        {
-                            "kind": "missing_required",
-                            "path": nested_path,
-                            "message": f"Missing required field '{nested_path}'.",
-                        }
-                    )
-            for nested_key, nested_value in value.items():
-                nested_path = f"{path}.{nested_key}"
-                if nested_key not in nested_properties:
-                    errors.append(
-                        {
-                            "kind": "unexpected_field",
-                            "path": nested_path,
-                            "message": f"Unexpected field '{nested_path}'.",
-                        }
-                    )
+                    nested = f"{path}.{field}"
+                    errors.append(self._error("missing_required", nested, f"Missing required field '{nested}'."))
+            for key, nested_value in value.items():
+                nested = f"{path}.{key}"
+                if key not in properties:
+                    errors.append(self._error("unexpected_field", nested, f"Unexpected field '{nested}'."))
                     continue
-                self._validate_value_against_schema(
-                    value=nested_value,
-                    schema=nested_properties[nested_key],
-                    path=nested_path,
-                    depth=depth + 1,
-                    errors=errors,
-                )
+                self._validate(nested_value, properties[key], nested, depth + 1, errors)
             return
 
-        if normalized_type in {"array", "list"}:
+        if schema_type == "array":
             if not isinstance(value, list):
-                errors.append(
-                    {
-                        "kind": "type_mismatch",
-                        "path": path,
-                        "message": f"Expected array/list at '{path}'.",
-                    }
-                )
+                errors.append(self._error("type_mismatch", path, f"Expected array/list at '{path}'."))
                 return
             item_schema = schema.get("items", {})
-            for idx, item in enumerate(value):
-                item_path = f"{path}[{idx}]"
-                self._validate_value_against_schema(
-                    value=item,
-                    schema=item_schema,
-                    path=item_path,
-                    depth=depth + 1,
-                    errors=errors,
-                )
+            for index, item in enumerate(value):
+                self._validate(item, item_schema, f"{path}[{index}]", depth + 1, errors)
             return
 
-        if normalized_type in {"boolean", "bool"}:
-            if not isinstance(value, bool):
-                errors.append(
-                    {
-                        "kind": "type_mismatch",
-                        "path": path,
-                        "message": f"Expected boolean at '{path}'.",
-                    }
-                )
-            return
+        checks = {
+            "boolean": lambda x: isinstance(x, bool),
+            "integer": lambda x: isinstance(x, int) and not isinstance(x, bool),
+            "float": lambda x: isinstance(x, (int, float)) and not isinstance(x, bool),
+            "string": lambda x: isinstance(x, str),
+        }
+        if schema_type in checks and not checks[schema_type](value):
+            label = {
+                "boolean": "boolean",
+                "integer": "integer",
+                "float": "numeric value",
+                "string": "string",
+            }[schema_type]
+            errors.append(self._error("type_mismatch", path, f"Expected {label} at '{path}'."))
 
-        if normalized_type in {"integer", "int"}:
-            if not isinstance(value, int) or isinstance(value, bool):
-                errors.append(
-                    {
-                        "kind": "type_mismatch",
-                        "path": path,
-                        "message": f"Expected integer at '{path}'.",
-                    }
-                )
-            return
-
-        if normalized_type in {"float", "number", "double"}:
-            if (not isinstance(value, (int, float))) or isinstance(value, bool):
-                errors.append(
-                    {
-                        "kind": "type_mismatch",
-                        "path": path,
-                        "message": f"Expected numeric value at '{path}'.",
-                    }
-                )
-            return
-
-        if normalized_type in {"string", "str"} and not isinstance(value, str):
-            errors.append(
-                {
-                    "kind": "type_mismatch",
-                    "path": path,
-                    "message": f"Expected string at '{path}'.",
-                }
-            )
-
-    def _generate_object_value(
+    def _generate_object(
         self,
         formatted_prompt: str,
         tool_name: str,
@@ -425,44 +310,35 @@ class GuidanceConstraintEngine:
         if depth >= self.config.max_json_depth:
             return {}
 
-        properties = schema.get("properties", {})
-        required_fields = set(schema.get("required", []))
-        generated: dict[str, Any] = {}
-
-        for field_name, field_schema in properties.items():
-            include_field = field_name in required_fields
-            if not include_field:
-                include_field = (
-                    self._run_select(
-                        prompt=(
-                            "Decide whether to include an optional tool argument field.\n"
-                            f"Tool: {tool_name}\n"
-                            f"Field: {field_name}\n"
-                            f"Conversation context:\n{formatted_prompt}\n\n"
-                            f"Existing selected tool calls: {self._render_python_tool_calls(selected_calls)}\n"
-                            "Choose yes or no:\n"
-                        ),
-                        options=["yes", "no"],
-                        key=f"include_{field_name}",
-                    )
-                    == "yes"
+        generated = {}
+        required = set(schema.get("required", []))
+        for field_name, field_schema in schema.get("properties", {}).items():
+            if field_name not in required:
+                include = self._select(
+                    self._prompt(
+                        formatted_prompt,
+                        selected_calls,
+                        f"Tool: {tool_name}",
+                        f"Optional field: {field_name}",
+                        "Answer yes or no.",
+                    ),
+                    ["yes", "no"],
+                    f"include_{field_name}",
                 )
-            if not include_field:
-                continue
-
-            generated[field_name] = self._generate_value_for_schema(
-                formatted_prompt=formatted_prompt,
-                tool_name=tool_name,
-                field_name=field_name,
-                field_schema=field_schema,
-                selected_calls=selected_calls,
-                depth=depth,
-                max_new_tokens=max_new_tokens,
+                if include != "yes":
+                    continue
+            generated[field_name] = self._generate_value(
+                formatted_prompt,
+                tool_name,
+                field_name,
+                field_schema,
+                selected_calls,
+                depth,
+                max_new_tokens,
             )
-
         return generated
 
-    def _generate_value_for_schema(
+    def _generate_value(
         self,
         formatted_prompt: str,
         tool_name: str,
@@ -473,486 +349,205 @@ class GuidanceConstraintEngine:
         max_new_tokens: int,
     ) -> Any:
         enum_values = field_schema.get("enum")
-        if isinstance(enum_values, list) and len(enum_values) > 0:
-            return self._run_enum_select(
-                prompt=(
-                    "Select a valid enum value for a tool argument.\n"
-                    f"Tool: {tool_name}\n"
-                    f"Field: {field_name}\n"
-                    f"Conversation context:\n{formatted_prompt}\n\n"
-                    f"Existing selected tool calls: {self._render_python_tool_calls(selected_calls)}\n"
-                    "Choose one enum value:\n"
+        if isinstance(enum_values, list) and enum_values:
+            options = [json.dumps(item, ensure_ascii=False) for item in enum_values]
+            chosen = self._select(
+                self._prompt(
+                    formatted_prompt,
+                    selected_calls,
+                    f"Tool: {tool_name}",
+                    f"Field: {field_name}",
+                    f"Allowed values: {json.dumps(options, ensure_ascii=False)}",
+                    "Answer with one allowed value only.",
                 ),
-                enum_values=enum_values,
-                key=f"enum_{field_name}",
+                options,
+                f"enum_{field_name}",
             )
+            try:
+                return json.loads(chosen)
+            except Exception:
+                return next((item for item in enum_values if str(item) == chosen), enum_values[0])
 
-        normalized_type = self._normalize_type(field_schema.get("type"))
-
-        if normalized_type in {"boolean", "bool"}:
-            bool_text = self._run_select(
-                prompt=(
-                    "Select a boolean value for a tool argument.\n"
-                    f"Tool: {tool_name}\n"
-                    f"Field: {field_name}\n"
-                    f"Conversation context:\n{formatted_prompt}\n\n"
-                    f"Existing selected tool calls: {self._render_python_tool_calls(selected_calls)}\n"
-                    "Choose true or false:\n"
+        schema_type = self._type(field_schema.get("type"))
+        if schema_type == "boolean":
+            return self._select(
+                self._prompt(
+                    formatted_prompt,
+                    selected_calls,
+                    f"Tool: {tool_name}",
+                    f"Field: {field_name}",
+                    "Type: boolean",
+                    "Answer with the value only.",
                 ),
-                options=["true", "false"],
-                key=f"bool_{field_name}",
-            )
-            return bool_text == "true"
+                ["true", "false"],
+                f"bool_{field_name}",
+            ) == "true"
 
-        if normalized_type in {"integer", "int"}:
-            generated_text = self._run_gen(
-                prompt=(
-                    "Generate an integer tool argument value.\n"
-                    f"Tool: {tool_name}\n"
-                    f"Field: {field_name}\n"
-                    f"Conversation context:\n{formatted_prompt}\n\n"
-                    f"Existing selected tool calls: {self._render_python_tool_calls(selected_calls)}\n"
-                    "Output integer:\n"
+        if schema_type in {"integer", "float", "string"}:
+            type_hint = "number" if schema_type == "float" else schema_type
+            regex = {"integer": INTEGER_PATTERN, "float": NUMBER_PATTERN}.get(schema_type)
+            value = self._runtime_adapter.gen(
+                self._prompt(
+                    formatted_prompt,
+                    selected_calls,
+                    f"Tool: {tool_name}",
+                    f"Field: {field_name}",
+                    f"Type: {type_hint}",
+                    "Answer with the value only.",
                 ),
-                key=f"int_{field_name}",
-                max_tokens=min(16, max_new_tokens),
-                regex=INTEGER_PATTERN,
+                key=f"{type_hint}_{field_name}",
+                max_tokens=min({"integer": 16, "float": 20}.get(schema_type, 64), max_new_tokens),
+                regex=regex,
             )
-            return self._coerce_value_to_schema(generated_text, field_schema, depth=depth)
+            return self._decode_generated_value(value, field_schema)
 
-        if normalized_type in {"float", "number", "double"}:
-            generated_text = self._run_gen(
-                prompt=(
-                    "Generate a numeric tool argument value.\n"
-                    f"Tool: {tool_name}\n"
-                    f"Field: {field_name}\n"
-                    f"Conversation context:\n{formatted_prompt}\n\n"
-                    f"Existing selected tool calls: {self._render_python_tool_calls(selected_calls)}\n"
-                    "Output numeric value:\n"
-                ),
-                key=f"num_{field_name}",
-                max_tokens=min(20, max_new_tokens),
-                regex=NUMBER_PATTERN,
-            )
-            return self._coerce_value_to_schema(generated_text, field_schema, depth=depth)
-
-        if normalized_type in {"array", "list"}:
+        if schema_type == "array":
             if depth >= self.config.max_json_depth:
                 return []
             min_items = int(field_schema.get("minItems", 0) or 0)
             max_items = int(field_schema.get("maxItems", min_items + 2) or (min_items + 2))
-            bounded_max = max(min_items, min(3, max_items))
-            count_options = [str(i) for i in range(min_items, bounded_max + 1)]
-            item_count = int(
-                self._run_select(
-                    prompt=(
-                        "Select how many array elements to generate for a tool argument.\n"
-                        f"Tool: {tool_name}\n"
-                        f"Field: {field_name}\n"
-                        f"Conversation context:\n{formatted_prompt}\n"
-                        "Choose array length:\n"
+            options = [str(i) for i in range(min_items, max(min_items, min(3, max_items)) + 1)]
+            count = int(
+                self._select(
+                    self._prompt(
+                        formatted_prompt,
+                        selected_calls,
+                        f"Tool: {tool_name}",
+                        f"Field: {field_name}",
+                        "Type: array_length",
+                        "Answer with the value only.",
                     ),
-                    options=count_options,
-                    key=f"arr_count_{field_name}",
+                    options,
+                    f"arr_count_{field_name}",
                 )
             )
             item_schema = field_schema.get("items", {})
-            values = []
-            for idx in range(item_count):
-                item_field_name = f"{field_name}_{idx}"
-                values.append(
-                    self._generate_value_for_schema(
-                        formatted_prompt=formatted_prompt,
-                        tool_name=tool_name,
-                        field_name=item_field_name,
-                        field_schema=item_schema,
-                        selected_calls=selected_calls,
-                        depth=depth + 1,
-                        max_new_tokens=max_new_tokens,
-                    )
+            return [
+                self._generate_value(
+                    formatted_prompt,
+                    tool_name,
+                    f"{field_name}_{index}",
+                    item_schema,
+                    selected_calls,
+                    depth + 1,
+                    max_new_tokens,
                 )
-            return values
+                for index in range(count)
+            ]
 
-        if normalized_type in {"dict", "object"}:
-            if depth >= self.config.max_json_depth:
-                return {}
-            nested_schema = self._normalize_object_schema(field_schema)
-            return self._generate_object_value(
-                formatted_prompt=formatted_prompt,
-                tool_name=tool_name,
-                schema=nested_schema,
-                selected_calls=selected_calls,
-                depth=depth + 1,
-                max_new_tokens=max_new_tokens,
+        if schema_type in {"dict", "object"}:
+            return {} if depth >= self.config.max_json_depth else self._generate_object(
+                formatted_prompt,
+                tool_name,
+                self._object_schema(field_schema),
+                selected_calls,
+                depth + 1,
+                max_new_tokens,
             )
 
-        # Free-form string fallback.
-        generated_text = self._run_gen(
-            prompt=(
-                "Generate a free-form string tool argument value.\n"
-                f"Tool: {tool_name}\n"
-                f"Field: {field_name}\n"
-                f"Conversation context:\n{formatted_prompt}\n\n"
-                f"Existing selected tool calls: {self._render_python_tool_calls(selected_calls)}\n"
-                "Output string value:\n"
+        value = self._runtime_adapter.gen(
+            self._prompt(
+                formatted_prompt,
+                selected_calls,
+                f"Tool: {tool_name}",
+                f"Field: {field_name}",
+                "Type: string",
+                "Answer with the value only.",
             ),
             key=f"str_{field_name}",
             max_tokens=min(64, max_new_tokens),
             regex=None,
         )
-        return self._coerce_value_to_schema(generated_text, field_schema, depth=depth)
+        return self._decode_generated_value(value, field_schema)
 
-    def _coerce_value_to_schema(self, value: Any, schema: dict, depth: int) -> Any:
-        if depth > self.config.max_json_depth:
-            return self._default_for_schema(schema)
+    def _select(self, prompt: str, options: list[str], key: str) -> str:
+        value = self._runtime_adapter.select(prompt, options, key)
+        if value not in options and value.startswith('"') and value.endswith('"'):
+            value = value[1:-1]
+        if value not in options:
+            for option in options:
+                parsed = self._safe_json_load(option)
+                if parsed == value:
+                    value = option
+                    break
+        if value not in options:
+            raise GuidanceGenerationError(f"Guidance select returned invalid option '{value}'.")
+        return value
 
-        enum_values = schema.get("enum")
-        if isinstance(enum_values, list):
-            if value in enum_values:
-                return value
-            if isinstance(value, str):
-                for enum_value in enum_values:
-                    if str(enum_value) == value:
-                        return enum_value
-            return enum_values[0] if enum_values else value
+    def _prompt(
+        self,
+        formatted_prompt: str,
+        selected_calls: list[tuple[str, dict[str, Any]]],
+        *lines: str,
+    ) -> str:
+        suffix = []
+        if selected_calls:
+            suffix.append(f"Previously selected calls: {self._render_calls(selected_calls)}")
+        suffix.extend(lines)
+        return formatted_prompt.rstrip() + "\n\n" + "\n".join(suffix) + "\n"
 
-        normalized_type = self._normalize_type(schema.get("type"))
+    @property
+    def _runtime_adapter(self) -> PinnedGuidanceRuntime:
+        if self._runtime is None:
+            self._runtime = PinnedGuidanceRuntime(self.model, self.tokenizer)
+        return self._runtime
 
-        if normalized_type in {"boolean", "bool"}:
-            if isinstance(value, bool):
-                return value
-            if isinstance(value, str):
-                lowered = value.strip().lower()
-                if lowered in {"true", "1", "yes"}:
-                    return True
-                if lowered in {"false", "0", "no"}:
-                    return False
-            return bool(value)
-
-        if normalized_type in {"integer", "int"}:
+    def _decode_generated_value(self, value: Any, schema: dict) -> Any:
+        schema_type = self._type(schema.get("type"))
+        if schema_type == "integer":
             if isinstance(value, int) and not isinstance(value, bool):
                 return value
-            if isinstance(value, float):
-                return int(value)
             if isinstance(value, str):
-                match = re.search(INTEGER_PATTERN, value.strip())
-                if match:
-                    return int(match.group(0))
-            default_value = schema.get("default")
-            if isinstance(default_value, int):
-                return default_value
-            return 0
-
-        if normalized_type in {"float", "number", "double"}:
+                stripped = value.strip()
+                if re.fullmatch(INTEGER_PATTERN, stripped):
+                    return int(stripped)
+            return value
+        if schema_type == "float":
             if isinstance(value, (int, float)) and not isinstance(value, bool):
                 return float(value)
             if isinstance(value, str):
-                match = re.search(NUMBER_PATTERN, value.strip())
-                if match:
-                    return float(match.group(0))
-            default_value = schema.get("default")
-            if isinstance(default_value, (int, float)):
-                return float(default_value)
-            return 0.0
-
-        if normalized_type in {"array", "list"}:
-            if isinstance(value, list):
-                item_schema = schema.get("items", {})
-                return [
-                    self._coerce_value_to_schema(item, item_schema, depth=depth + 1)
-                    for item in value
-                ]
-            if isinstance(value, str):
-                parsed = self._safe_json_load(value)
-                if isinstance(parsed, list):
-                    item_schema = schema.get("items", {})
-                    return [
-                        self._coerce_value_to_schema(item, item_schema, depth=depth + 1)
-                        for item in parsed
-                    ]
-            return []
-
-        if normalized_type in {"dict", "object"}:
-            object_schema = self._normalize_object_schema(schema)
-            if isinstance(value, str):
-                parsed = self._safe_json_load(value)
-                if isinstance(parsed, dict):
-                    value = parsed
-            if isinstance(value, dict):
-                properties = object_schema.get("properties", {})
-                coerced = {}
-                for field_name, field_schema in properties.items():
-                    if field_name not in value:
-                        continue
-                    coerced[field_name] = self._coerce_value_to_schema(
-                        value[field_name], field_schema, depth=depth + 1
-                    )
-                return coerced
-            return {}
-
-        if value is None:
-            default_value = schema.get("default")
-            if default_value is not None:
-                return default_value
-            return ""
-        if isinstance(value, str):
+                stripped = value.strip()
+                if re.fullmatch(NUMBER_PATTERN, stripped):
+                    return float(stripped)
+            return value
+        if schema_type == "string" and isinstance(value, str):
             return value.strip()
-        return str(value)
+        return value
 
-    def _normalize_object_schema(self, schema: dict) -> dict:
-        if not isinstance(schema, dict):
-            return {"type": "dict", "properties": {}, "required": []}
+    def _object_schema(self, schema: dict) -> dict:
+        schema = dict(schema) if isinstance(schema, dict) else {}
+        if self._type(schema.get("type", "dict")) not in {"dict", "object"}:
+            schema["type"] = "dict"
+        schema.setdefault("properties", {})
+        schema.setdefault("required", [])
+        return schema
 
-        normalized = dict(schema)
-        normalized_type = self._normalize_type(normalized.get("type", "dict"))
-        if normalized_type not in {"dict", "object"}:
-            normalized["type"] = "dict"
-        normalized.setdefault("properties", {})
-        normalized.setdefault("required", [])
-        return normalized
-
-    def _default_for_schema(self, schema: dict) -> Any:
-        if isinstance(schema, dict) and "default" in schema:
-            return schema["default"]
-
-        normalized_type = self._normalize_type(
-            schema.get("type") if isinstance(schema, dict) else None
-        )
-        if normalized_type in {"dict", "object"}:
-            return {}
-        if normalized_type in {"array", "list"}:
-            return []
-        if normalized_type in {"boolean", "bool"}:
-            return False
-        if normalized_type in {"integer", "int"}:
-            return 0
-        if normalized_type in {"float", "number", "double"}:
-            return 0.0
-        return ""
-
-    def _normalize_type(self, raw_type: Any) -> str:
+    def _type(self, raw_type: Any) -> str:
         if isinstance(raw_type, list) and raw_type:
-            # JSON-schema style type unions: pick a non-null type if available.
-            filtered = [item for item in raw_type if str(item).lower() != "null"]
-            if filtered:
-                raw_type = filtered[0]
-            else:
-                raw_type = raw_type[0]
-        raw = str(raw_type or "string").strip().lower()
-        mapping = {
-            "dict": "dict",
-            "dictionary": "dict",
-            "object": "object",
-            "map": "dict",
-            "array": "array",
-            "list": "array",
-            "tuple": "array",
-            "str": "string",
-            "string": "string",
-            "any": "string",
-            "int": "integer",
-            "integer": "integer",
-            "long": "integer",
-            "float": "float",
-            "double": "float",
-            "number": "float",
-            "decimal": "float",
-            "bool": "boolean",
-            "boolean": "boolean",
-        }
-        return mapping.get(raw, "string")
+            raw_type = next((item for item in raw_type if str(item).lower() != "null"), raw_type[0])
+        return TYPE_MAP.get(str(raw_type or "string").strip().lower(), "string")
 
-    def _extract_root_field(self, path: str) -> str:
-        if not path or path == "$":
-            return ""
-        cleaned = path.replace("$.", "")
-        cleaned = cleaned.split(".", 1)[0]
-        cleaned = cleaned.split("[", 1)[0]
-        return cleaned
-
-    def _render_python_tool_calls(self, calls: list[tuple[str, dict[str, Any]]]) -> str:
+    def _render_calls(self, calls: list[tuple[str, dict[str, Any]]]) -> str:
         if not calls:
             return "[]"
-        rendered_calls = []
+        rendered = []
         for name, arguments in calls:
-            arguments_text = ", ".join(
-                f"{arg_name}={self._python_repr(arg_value)}"
-                for arg_name, arg_value in arguments.items()
-            )
-            rendered_calls.append(f"{name}({arguments_text})")
-        return ", ".join(rendered_calls)
+            args = ", ".join(f"{key}={self._python_repr(value)}" for key, value in arguments.items())
+            rendered.append(f"{name}({args})")
+        return ", ".join(rendered)
 
     def _python_repr(self, value: Any) -> str:
         if isinstance(value, dict):
-            inner = ", ".join(
-                f"{self._python_repr(key)}: {self._python_repr(val)}"
-                for key, val in value.items()
-            )
-            return "{" + inner + "}"
+            return "{" + ", ".join(f"{self._python_repr(k)}: {self._python_repr(v)}" for k, v in value.items()) + "}"
         if isinstance(value, list):
-            inner = ", ".join(self._python_repr(item) for item in value)
-            return "[" + inner + "]"
+            return "[" + ", ".join(self._python_repr(item) for item in value) + "]"
         return repr(value)
-
-    def _run_enum_select(
-        self,
-        prompt: str,
-        enum_values: list[Any],
-        key: str,
-    ) -> Any:
-        encoded_options = [json.dumps(item, ensure_ascii=False) for item in enum_values]
-        chosen = self._run_select(prompt=prompt, options=encoded_options, key=key)
-        try:
-            return json.loads(chosen)
-        except Exception:
-            for enum_value in enum_values:
-                if str(enum_value) == chosen:
-                    return enum_value
-        return enum_values[0]
-
-    def _run_select(self, prompt: str, options: list[str], key: str) -> str:
-        if not options:
-            raise GuidanceGenerationError("Cannot run select with empty options.")
-        selection_op = self._build_select_op(options=options, key=key)
-        value = self._run_guidance_op(prompt=prompt, op=selection_op, key=key)
-        value = str(value).strip()
-        if value not in options:
-            if value.startswith('"') and value.endswith('"'):
-                value = value[1:-1]
-            if value not in options:
-                raise GuidanceGenerationError(
-                    f"Guidance select returned invalid option '{value}'."
-                )
-        return value
-
-    def _run_gen(
-        self,
-        prompt: str,
-        key: str,
-        max_tokens: int,
-        regex: Optional[str],
-    ) -> str:
-        gen_op = self._build_gen_op(key=key, max_tokens=max_tokens, regex=regex)
-        value = self._run_guidance_op(prompt=prompt, op=gen_op, key=key)
-        return str(value).strip()
-
-    def _run_guidance_op(self, prompt: str, op: Any, key: str) -> Any:
-        if self._guidance_model is None:
-            raise GuidanceGenerationError("Guidance model is not initialized.")
-        try:
-            lm = self._guidance_model + prompt
-            lm += op
-            return lm[key]
-        except Exception as exc:
-            raise GuidanceGenerationError(
-                f"Guidance operation failed for key '{key}': {exc}"
-            ) from exc
-
-    def _build_select_op(self, options: list[str], key: str) -> Any:
-        guidance_module = self._import_guidance_module()
-        select_fn = getattr(guidance_module, "select", None)
-        if select_fn is None:
-            raise GuidanceGenerationError("`guidance.select` is unavailable.")
-
-        candidates = (
-            {"options": options, "name": key},
-            {"name": key, "options": options},
-            {"name": key, "choices": options},
-        )
-        for kwargs in candidates:
-            try:
-                return select_fn(**kwargs)
-            except TypeError:
-                continue
-        try:
-            return select_fn(options, name=key)
-        except TypeError as exc:
-            raise GuidanceGenerationError(
-                "Unable to construct guidance select op with the installed Guidance version."
-            ) from exc
-
-    def _build_gen_op(self, key: str, max_tokens: int, regex: Optional[str]) -> Any:
-        guidance_module = self._import_guidance_module()
-        gen_fn = getattr(guidance_module, "gen", None)
-        if gen_fn is None:
-            raise GuidanceGenerationError("`guidance.gen` is unavailable.")
-
-        kwargs = {"name": key, "max_tokens": max_tokens}
-        if regex is not None:
-            for regex_key in ("regex", "pattern"):
-                try:
-                    return gen_fn(**{**kwargs, regex_key: regex})
-                except TypeError:
-                    continue
-        try:
-            return gen_fn(**kwargs)
-        except TypeError as exc:
-            raise GuidanceGenerationError(
-                "Unable to construct guidance gen op with the installed Guidance version."
-            ) from exc
-
-    def _build_guidance_model(self) -> Any:
-        if self._guidance_model is not None:
-            return self._guidance_model
-
-        guidance_module = self._import_guidance_module()
-        models_module = getattr(guidance_module, "models", None)
-        if models_module is None or not hasattr(models_module, "Transformers"):
-            raise GuidanceGenerationError(
-                "Installed Guidance package does not expose guidance.models.Transformers."
-            )
-
-        transformers_model_cls = getattr(models_module, "Transformers")
-
-        constructor_candidates = [
-            {"model": self.model, "tokenizer": self.tokenizer, "echo": False},
-            {"model": self.model, "tokenizer": self.tokenizer},
-            {"model": self.model, "tokenizer": self.tokenizer, "silent": True},
-            {"model": self.model},
-        ]
-        for kwargs in constructor_candidates:
-            try:
-                self._guidance_model = transformers_model_cls(**kwargs)
-                return self._guidance_model
-            except TypeError:
-                continue
-            except Exception as exc:
-                raise GuidanceGenerationError(
-                    f"Failed to initialize Guidance Transformers model: {exc}"
-                ) from exc
-
-        positional_candidates = [
-            (self.model, self.tokenizer),
-            (self.model,),
-        ]
-        for args in positional_candidates:
-            try:
-                self._guidance_model = transformers_model_cls(*args)
-                return self._guidance_model
-            except TypeError:
-                continue
-            except Exception as exc:
-                raise GuidanceGenerationError(
-                    f"Failed to initialize Guidance Transformers model: {exc}"
-                ) from exc
-
-        raise GuidanceGenerationError(
-            "Unable to construct Guidance Transformers model with known signatures."
-        )
-
-    def _import_guidance_module(self):
-        if self._guidance_module is not None:
-            return self._guidance_module
-        try:
-            self._guidance_module = importlib.import_module("guidance")
-            return self._guidance_module
-        except Exception as exc:
-            raise GuidanceUnavailableError(
-                "Guidance is not installed. Install BFCL with Guidance extras to enable constrained generation."
-            ) from exc
 
     def _safe_json_load(self, text: str) -> Any:
         try:
             return json.loads(text)
         except Exception:
             return None
+
+    def _error(self, kind: str, path: str, message: str) -> dict[str, str]:
+        return {"kind": kind, "path": path, "message": message}

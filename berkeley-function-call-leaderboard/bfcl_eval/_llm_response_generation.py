@@ -158,7 +158,7 @@ def get_args():
         "--guidance-repair-attempts",
         type=int,
         default=2,
-        help="Number of argument repair retries for Guidance-constrained generation.",
+        help="Number of whole-object regeneration attempts after constrained-argument validation fails.",
     )
     parser.add_argument(
         "--guidance-max-calls-per-step",

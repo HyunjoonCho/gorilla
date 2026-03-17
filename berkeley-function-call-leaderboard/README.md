@@ -108,6 +108,7 @@ pip install -e .[oss_eval_transformers]
 ```bash
 pip install -e .[oss_eval_transformers,oss_eval_guidance]
 ```
+This extra pins the supported Guidance stack to `guidance==0.3.0`, `guidance-stitch==0.1.5`, and `llguidance==1.1.0`.
 
 ### Configuring Project Root Directory
 
@@ -253,7 +254,7 @@ bfcl generate \
 - `--max-lora-rank` (optional): Specify the maximum LoRA rank for the vLLM backend. This is an integer value. This only works when backend is `vllm` and `--enable-lora` flag is set.
 - `--lora-modules` (optional): Specify the path to the LoRA modules for the vLLM backend in `name="path"` format. This allows evaluation of fine-tuned models with LoRA adapters. You can specify multiple LoRA modules by repeating this argument. This only works when backend is `vllm` and `--enable-lora` flag is set.
 - `--tool-constraint-engine` (optional): Choose `none` (default) or `guidance`. Guidance mode currently applies to local prompting flow on `transformers` backend only.
-- `--guidance-repair-attempts` (optional, default `2`): Number of schema-repair retries for constrained argument generation.
+- `--guidance-repair-attempts` (optional, default `2`): Number of whole-object regeneration attempts after constrained-argument validation fails.
 - `--guidance-max-calls-per-step` (optional, default `4`): Upper bound on constrained tool calls emitted in one step.
 - `--guidance-max-json-depth` (optional, default `3`): Maximum recursive depth for constrained array/object argument generation.
 - `--constraint-strict` (optional): If set, BFCL raises instead of falling back to unconstrained generation when constrained mode is unavailable/incompatible for the selected handler/backend.
