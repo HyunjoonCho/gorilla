@@ -174,6 +174,8 @@ class GuidanceConstraintEngine:
                 tool_name,
                 schema,
                 selected_calls,
+                f"{tool_name}(",
+                "call",
                 0,
                 max_new_tokens,
             )
@@ -278,6 +280,8 @@ class GuidanceConstraintEngine:
         tool_name: str,
         schema: dict,
         selected_calls: list[tuple[str, dict[str, Any]]],
+        prefix: str,
+        container: str,
         depth: int,
         max_new_tokens: int,
     ) -> dict[str, Any]:
@@ -286,6 +290,7 @@ class GuidanceConstraintEngine:
 
         generated = {}
         required = set(schema.get("required", []))
+        current_prefix = prefix
         for field_name, field_schema in schema.get("properties", {}).items():
             if field_name not in required:
                 include = self._select(
@@ -301,15 +306,23 @@ class GuidanceConstraintEngine:
                 )
                 if include != "yes":
                     continue
-            generated[field_name] = self._generate_value(
+            field_prefix = self._append_mapping_prefix(
+                current_prefix,
+                field_name,
+                container,
+            )
+            value = self._generate_value(
                 formatted_prompt,
                 tool_name,
                 field_name,
                 field_schema,
                 selected_calls,
+                field_prefix,
                 depth,
                 max_new_tokens,
             )
+            generated[field_name] = value
+            current_prefix = field_prefix + self._python_repr(value)
         return generated
 
     def _generate_value(
@@ -319,6 +332,7 @@ class GuidanceConstraintEngine:
         field_name: str,
         field_schema: dict,
         selected_calls: list[tuple[str, dict[str, Any]]],
+        prefix: str,
         depth: int,
         max_new_tokens: int,
     ) -> Any:
@@ -326,14 +340,7 @@ class GuidanceConstraintEngine:
         if isinstance(enum_values, list) and enum_values:
             options = [json.dumps(item, ensure_ascii=False) for item in enum_values]
             chosen = self._select(
-                self._prompt(
-                    formatted_prompt,
-                    selected_calls,
-                    f"Tool: {tool_name}",
-                    f"Field: {field_name}",
-                    f"Allowed values: {json.dumps(options, ensure_ascii=False)}",
-                    "Answer with one allowed value only.",
-                ),
+                self._prompt(formatted_prompt, selected_calls, prefix),
                 options,
                 f"enum_{field_name}",
             )
@@ -345,30 +352,17 @@ class GuidanceConstraintEngine:
         schema_type = self._type(field_schema.get("type"))
         if schema_type == "boolean":
             return self._select(
-                self._prompt(
-                    formatted_prompt,
-                    selected_calls,
-                    f"Tool: {tool_name}",
-                    f"Field: {field_name}",
-                    "Type: boolean",
-                    "Answer with the value only.",
-                ),
-                ["true", "false"],
+                self._prompt(formatted_prompt, selected_calls, prefix),
+                ["True", "False"],
                 f"bool_{field_name}",
-            ) == "true"
+            ) == "True"
 
         if schema_type == "string":
             value = self._runtime_adapter.gen(
-                self._prompt(
-                    formatted_prompt,
-                    selected_calls,
-                    f"Tool: {tool_name}",
-                    f"Field: {field_name}",
-                    "Value:",
-                ),
+                self._prompt(formatted_prompt, selected_calls, prefix + "'"),
                 key=f"string_{field_name}",
                 max_tokens=min(64, max_new_tokens),
-                stop="\n",
+                stop="'",
             )
             return self._decode_generated_value(value, field_schema)
 
@@ -376,14 +370,7 @@ class GuidanceConstraintEngine:
             type_hint = "number" if schema_type == "float" else schema_type
             regex = {"integer": INTEGER_PATTERN, "float": NUMBER_PATTERN}[schema_type]
             value = self._runtime_adapter.gen(
-                self._prompt(
-                    formatted_prompt,
-                    selected_calls,
-                    f"Tool: {tool_name}",
-                    f"Field: {field_name}",
-                    f"Type: {type_hint}",
-                    "Answer with the value only.",
-                ),
+                self._prompt(formatted_prompt, selected_calls, prefix),
                 key=f"{type_hint}_{field_name}",
                 max_tokens=min({"integer": 16, "float": 20}[schema_type], max_new_tokens),
                 regex=regex,
@@ -411,18 +398,23 @@ class GuidanceConstraintEngine:
                 )
             )
             item_schema = field_schema.get("items", {})
-            return [
-                self._generate_value(
+            items = []
+            current_prefix = prefix + "["
+            for index in range(count):
+                item_prefix = self._append_array_prefix(current_prefix)
+                item = self._generate_value(
                     formatted_prompt,
                     tool_name,
                     f"{field_name}_{index}",
                     item_schema,
                     selected_calls,
+                    item_prefix,
                     depth + 1,
                     max_new_tokens,
                 )
-                for index in range(count)
-            ]
+                items.append(item)
+                current_prefix = item_prefix + self._python_repr(item)
+            return items
 
         if schema_type in {"dict", "object"}:
             return {} if depth >= self.config.max_json_depth else self._generate_object(
@@ -430,21 +422,17 @@ class GuidanceConstraintEngine:
                 tool_name,
                 self._object_schema(field_schema),
                 selected_calls,
+                prefix + "{",
+                "object",
                 depth + 1,
                 max_new_tokens,
             )
 
         value = self._runtime_adapter.gen(
-            self._prompt(
-                formatted_prompt,
-                selected_calls,
-                f"Tool: {tool_name}",
-                f"Field: {field_name}",
-                "Value:",
-            ),
+            self._prompt(formatted_prompt, selected_calls, prefix + "'"),
             key=f"str_{field_name}",
             max_tokens=min(64, max_new_tokens),
-            stop="\n",
+            stop="'",
         )
         return self._decode_generated_value(value, field_schema)
 
@@ -499,8 +487,20 @@ class GuidanceConstraintEngine:
                     return float(stripped)
             return value
         if schema_type == "string" and isinstance(value, str):
-            return value.strip()
+            stripped = value.strip()
+            if len(stripped) >= 2 and stripped[0] == stripped[-1] and stripped[0] in {"'", '"'}:
+                stripped = stripped[1:-1]
+            return stripped
         return value
+
+    def _append_mapping_prefix(self, prefix: str, field_name: str, container: str) -> str:
+        separator = "" if prefix.endswith(("(", "{")) else ", "
+        if container == "object":
+            return f"{prefix}{separator}{self._python_repr(field_name)}: "
+        return f"{prefix}{separator}{field_name}="
+
+    def _append_array_prefix(self, prefix: str) -> str:
+        return prefix if prefix.endswith("[") else f"{prefix}, "
 
     def _object_schema(self, schema: dict) -> dict:
         schema = dict(schema) if isinstance(schema, dict) else {}
