@@ -70,11 +70,14 @@ class PinnedGuidanceRuntime:
         key: str,
         max_tokens: int,
         regex: Optional[str] = None,
+        stop: Optional[str] = None,
     ) -> str:
         guidance = self._ensure_loaded()
         kwargs = {"name": key, "max_tokens": max_tokens}
         if regex is not None:
             kwargs["regex"] = regex
+        if stop is not None:
+            kwargs["stop"] = stop
         try:
             lm = self._lm + prompt
             lm += guidance.gen(**kwargs)
@@ -356,9 +359,24 @@ class GuidanceConstraintEngine:
                 f"bool_{field_name}",
             ) == "true"
 
-        if schema_type in {"integer", "float", "string"}:
+        if schema_type == "string":
+            value = self._runtime_adapter.gen(
+                self._prompt(
+                    formatted_prompt,
+                    selected_calls,
+                    f"Tool: {tool_name}",
+                    f"Field: {field_name}",
+                    "Value:",
+                ),
+                key=f"string_{field_name}",
+                max_tokens=min(64, max_new_tokens),
+                stop="\n",
+            )
+            return self._decode_generated_value(value, field_schema)
+
+        if schema_type in {"integer", "float"}:
             type_hint = "number" if schema_type == "float" else schema_type
-            regex = {"integer": INTEGER_PATTERN, "float": NUMBER_PATTERN}.get(schema_type)
+            regex = {"integer": INTEGER_PATTERN, "float": NUMBER_PATTERN}[schema_type]
             value = self._runtime_adapter.gen(
                 self._prompt(
                     formatted_prompt,
@@ -369,7 +387,7 @@ class GuidanceConstraintEngine:
                     "Answer with the value only.",
                 ),
                 key=f"{type_hint}_{field_name}",
-                max_tokens=min({"integer": 16, "float": 20}.get(schema_type, 64), max_new_tokens),
+                max_tokens=min({"integer": 16, "float": 20}[schema_type], max_new_tokens),
                 regex=regex,
             )
             return self._decode_generated_value(value, field_schema)
@@ -424,12 +442,11 @@ class GuidanceConstraintEngine:
                 selected_calls,
                 f"Tool: {tool_name}",
                 f"Field: {field_name}",
-                "Type: string",
-                "Answer with the value only.",
+                "Value:",
             ),
             key=f"str_{field_name}",
             max_tokens=min(64, max_new_tokens),
-            regex=None,
+            stop="\n",
         )
         return self._decode_generated_value(value, field_schema)
 
