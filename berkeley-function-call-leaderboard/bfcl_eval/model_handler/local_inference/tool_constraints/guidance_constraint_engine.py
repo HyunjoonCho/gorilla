@@ -42,7 +42,7 @@ class GuidanceGenerationError(GuidanceConstraintError):
 @dataclass
 class GuidanceConstraintConfig:
     repair_attempts: int = 2
-    max_calls_per_step: int = 4
+    max_calls_per_step: int = 1
     max_json_depth: int = 3
 
 
@@ -127,14 +127,12 @@ class GuidanceConstraintEngine:
             return "[]", {"constraint_engine": "guidance", "selected_tools": []}
 
         selected_calls: list[tuple[str, dict[str, Any]]] = []
-        options = [*tool_map, NO_TOOL_SELECTION]
+        options = [*tool_map] # exclude NO_TOOL_SELECTION for now
         for _ in range(self.config.max_calls_per_step):
             name = self._select(
                 self._prompt(
                     formatted_prompt,
                     selected_calls,
-                    "Choose the next tool name or the final-answer sentinel.",
-                    f"Options: {json.dumps(options, ensure_ascii=False)}",
                 ),
                 options,
                 "tool_name",
