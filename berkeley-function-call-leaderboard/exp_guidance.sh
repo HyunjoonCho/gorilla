@@ -19,9 +19,9 @@ MODELS=(
 TASKS=(
   "simple_python"
   "live_simple"
-  "multi_turn_base"
-  "memory_kv"
-  "web_search_base"
+#  "multi_turn_base"
+#  "memory_kv"
+#  "web_search_base"
 )
 
 if [[ "$BACKEND" != "transformers" ]]; then
