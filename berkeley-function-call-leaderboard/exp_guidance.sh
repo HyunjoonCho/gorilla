@@ -45,6 +45,7 @@ for model in "${MODELS[@]}"; do
       --temperature "$TEMPERATURE" \
       --result-dir "$RESULT_DIR" \
       --tool-constraint-engine guidance \
+      --guidance-max-calls-per-step 1 \
       --constraint-strict; then
       failures+=("${model} :: ${task}")
       echo "FAILED: model=${model} task=${task}"
