@@ -1,0 +1,15 @@
+{
+    "core_memory": {
+        "user_name": "Michael",
+        "first_time_user": "True",
+        "resolution_request": "damaged espresso machine, replacement or repair, significant damage, quick resolution needed for hosting",
+        "user_grinder_preferences": "conical burrs, consistency, grind-size range, low noise levels, easy cleaning, stainless-steel look, sleek, modern design",
+        "user_ordering_preferences": "similar checkout process as last purchase, discount for returning customers, loyalty or referral program, value long-lasting products, freelancer budget conscious, aspires to elevate coffee brewing skills, potential future barista career",
+        "user_shipping_concerns": "shipping delays, order 1 stuck, verify address/payment for order 2",
+        "user_payment_preferences": "flexible payment options, credit card, interested in financing or subscription-linked payment plans, prefers simplicity"
+    },
+    "archival_memory": {
+        "user_resolution_request": "damaged espresso machine, replacement or repair",
+        "user_design_aesthetic": "sleek, modern, stainless-steel"
+    }
+}

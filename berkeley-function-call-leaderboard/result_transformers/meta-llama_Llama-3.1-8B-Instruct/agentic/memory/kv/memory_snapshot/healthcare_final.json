@@ -1,0 +1,12 @@
+{
+    "core_memory": {},
+    "archival_memory": {
+        "patient_medical_history": "diabetes, hypertension, osteoarthritis, hypothyroidism",
+        "medication_adjustments": "regularly reviewed and adjusted every few months",
+        "medication_tracking": "keeps track of everything to avoid missing doses or mixing prescriptions",
+        "diabetes_medication": "metformin 1000 mg twice daily",
+        "doctor_suggestion": "adding semaglutide(Ozempic) at a low dose",
+        "semaglutide_effect": "helps control appetite",
+        "fasting_blood_sugar_level": "125-130 mg/dL"
+    }
+}

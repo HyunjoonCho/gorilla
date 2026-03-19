@@ -1,0 +1,11 @@
+{
+    "core_memory": {
+        "vendor_contract_review": "signed",
+        "security_compliance_training": "completed"
+    },
+    "archival_memory": {
+        "team_meeting": "ran over by 30 minutes",
+        "it_security_update": "change passwords ASAP",
+        "client_call_jacob": "delayed till Wednesday"
+    }
+}

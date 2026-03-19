@@ -1,0 +1,33 @@
+{
+    "core_memory": {
+        "tasks_dishes": "Wash dishes tonight before it piles up.",
+        "tasks_laundry": "Separate colors, don\u2019t mix whites.",
+        "tasks_fix_sink": "Fix leaky sink in the kitchen\u2014YouTube how-to if needed.",
+        "tasks_trash": "Take out trash Wednesday morning.",
+        "tasks_vacuum": "Vacuum living room.",
+        "tasks_mop_kitchen": "Mop the kitchen floor\u2014sticky from last night\u2019s spill.",
+        "tasks_car_wash": "Wash and vacuum car on Sunday."
+    },
+    "archival_memory": {
+        "tasks": "Submit tax documents before Friday. Review credit card statement for errors. Call auto repair shop about weird noise in the engine.",
+        "work_tasks": "Finalize quarterly budget. Review vendor contract before signing. Finish security compliance training module.",
+        "tech_tasks": "Back up laptop files. Update phone software. Cancel unused subscriptions.",
+        "personal_tasks": "Schedule dentist appointment. Stick to gym 3x this week. Call mom\u2014it\u2019s been a while.",
+        "daycare_drop_off": "Drop-off at 8 AM",
+        "daycare_pick_up": "Pick-up at 5 PM",
+        "daycare_payment_due": "Monthly payment due Friday",
+        "daycare_extra_clothes": "Bring extra set of clothes\u2014last set got muddy",
+        "elementary_school_paperwork": "Finalize admission paperwork",
+        "elementary_school_orientation": "Attend orientation next Thursday",
+        "elementary_school_research": "Research after-school programs",
+        "doctor_pediatrician_visit": "Schedule pediatrician visit for kid\u2019s cold",
+        "doctor_vaccine_schedule": "Check vaccine schedule\u2014next shots due in two months",
+        "doctor_food_allergies": "Monitor food allergies\u2014keep a log if symptoms flare up",
+        "family_time_park": "Take kid to park this weekend",
+        "family_time_bedtime_story": "Pick out a new bedtime story book",
+        "family_time_counting_practice": "Help with counting practice\u2014focus on numbers 1-20",
+        "shopping_diapers": "Buy more diapers",
+        "shopping_school_supplies": "Get school supplies\u2014crayons, notebooks, glue sticks",
+        "shopping_daycare_snacks": "Pack extra snacks in daycare bag"
+    }
+}

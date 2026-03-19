@@ -1,0 +1,33 @@
+{
+    "core_memory": {
+        "customer_name": "Michael",
+        "first_interaction": "False",
+        "customer_age": "35",
+        "customer_location": "Seattle",
+        "customer_occupation": "freelance graphic designer",
+        "customer_interests": "gadgets and appliances",
+        "customer_goal": "resolve stuck tracking issue, have espresso machine for latte art showdown, investigate estimated delivery time discrepancy, investigate tracking status, understand return and exchange policy, receive shipping notification, request shipping update from carrier, and ensure smooth delivery"
+    },
+    "archival_memory": {
+        "customer_preferred_espresso_machine_finish": "stainless-steel",
+        "customer_confirmed_purchase": "True",
+        "customer_preferred_espresso_machine_model": "sleeker, modern model",
+        "customer_preferred_espresso_machine_features": "steam wand",
+        "customer_preferred_beverages": "strawberry matcha latte, cappuccino",
+        "customer_hosting_plans": "True",
+        "customer_counter_size": "38 square feet",
+        "customer_promotional_offer": "new-customer 17% off discount",
+        "customer_payment_methods": "credit card, PayPal, Apple Pay, financing option",
+        "customer_event": "hosting latte art showdown",
+        "customer_shipping_questions": "extra charge for expedited delivery, free shipping threshold",
+        "customer_tracking_preferences": "real-time tracking, signature required",
+        "customer_return_policy": "file claim with carrier on customer behalf",
+        "customer_coffee_preferences": "freshly ground coffee, coffee beans, coffee grinder",
+        "customer_appreciation": "responsive and detailed support",
+        "customer_shipping_issue": "tracking status stuck",
+        "customer_shipping_concern": "estimated delivery time discrepancy",
+        "customer_shipping_update": "investigate tracking status and estimated delivery time",
+        "customer_shipping_notification": "notify customer of updated shipping schedule",
+        "customer_shipping_update_request": "request shipping update from carrier"
+    }
+}

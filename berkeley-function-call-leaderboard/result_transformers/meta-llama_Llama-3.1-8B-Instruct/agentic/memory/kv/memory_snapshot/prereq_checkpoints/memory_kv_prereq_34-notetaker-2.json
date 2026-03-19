@@ -1,0 +1,17 @@
+{
+    "core_memory": {
+        "vendor_contract_review": "signed",
+        "security_compliance_training": "completed",
+        "dishes_wash": "tonight",
+        "laundry_separate_colors": "don't mix whites",
+        "leaky_sink_fix": "YouTube how-to if needed"
+    },
+    "archival_memory": {
+        "team_meeting": "ran over by 30 minutes",
+        "it_security_update": "change passwords ASAP",
+        "client_call_jacob": "delayed till Wednesday",
+        "dishes_wash": "wash tonight before it piles up",
+        "laundry_separate_colors": "separate colors, don't mix whites",
+        "leaky_sink_fix": "YouTube how-to if needed"
+    }
+}

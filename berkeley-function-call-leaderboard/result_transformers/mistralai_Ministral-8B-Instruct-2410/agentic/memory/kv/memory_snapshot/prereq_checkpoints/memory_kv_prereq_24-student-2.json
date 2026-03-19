@@ -1,0 +1,18 @@
+{
+    "core_memory": {
+        "user_major": "Computer Science",
+        "user_year": "fourth year",
+        "user_schedule": "killer but in a good way",
+        "user_courses": "higher-level courses, complex algorithmic concepts, advanced system design, quantum computing basics",
+        "user_favorite_class": "Advanced Algorithms",
+        "user_project": "simulate a decentralized file storage system",
+        "user_age": "21"
+    },
+    "archival_memory": {
+        "user_research_start": "sophomore year",
+        "user_research_project": "visualizing oceanic temperature changes over time for a climate study group",
+        "user_research_project_description": "working on immersive analytics platforms, exploring how VR or AR technologies might help scientists get an intuitive feel for complex data.",
+        "user_publications": "two workshop papers and a conference submission on IEEE VIS.",
+        "user_project": "simulate a decentralized file storage system"
+    }
+}

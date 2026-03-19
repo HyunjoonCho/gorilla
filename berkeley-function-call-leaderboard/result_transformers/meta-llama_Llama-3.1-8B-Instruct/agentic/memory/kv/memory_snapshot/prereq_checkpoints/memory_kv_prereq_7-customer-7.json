@@ -1,0 +1,21 @@
+{
+    "core_memory": {
+        "customer_preferred_beverages": "strawberry matcha latte, cappuccino, espresso",
+        "customer_tracking_preferences": "real-time tracking, signature required, shipping updates every 24 hours",
+        "customer_browsing_frequency": "Michael frequently browses the site for additional accessories or new gadgets",
+        "customer_purchases": "Michael has made multiple purchases from the site"
+    },
+    "archival_memory": {
+        "customer_concern_details": "charge not tied to specific product purchase, no recent orders, double-checked other transactions",
+        "customer_inquiry_subscription": "discussed but no membership program signed up",
+        "customer_glitch_experience": "double order confirmed emails, server timeout, one canceled",
+        "customer_concern_priority": "quick resolution, direct communication, avoid credit card dispute",
+        "customer_tax_duty_concern": "unexpected charge not resembling normal sales tax amounts",
+        "customer_system_error_concern": "accidental flagging, membership system glitch, leftover shipping fee",
+        "customer_legitimate_charge_concern": "willing to pay legitimate charges, but this charge is not tied to any recent purchases",
+        "customer_membership_concern": "accidental enrollment, auto-renewal without knowledge, impact on customer perception",
+        "customer_support_request": "credit card statement screenshot, transaction ID, approximate date of charge",
+        "customer_resolution_priority": "refund or clarification, avoid credit card dispute, maintain trust and future purchases",
+        "customer_resolution_status": "pending investigation"
+    }
+}

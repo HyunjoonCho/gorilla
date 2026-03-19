@@ -1,0 +1,39 @@
+{
+    "core_memory": {
+        "customer_preferred_beverages": "strawberry matcha latte, cappuccino, espresso",
+        "customer_tracking_preferences": "real-time tracking, signature required, shipping updates every 24 hours",
+        "customer_browsing_frequency": "Michael frequently browses the site for additional accessories or new gadgets",
+        "customer_purchases": "Michael has made multiple purchases from the site",
+        "customer_feedback": "Michael, a 35-year-old freelance graphic designer from Seattle, has provided feedback on his experiences with the company's products and service"
+    },
+    "archival_memory": {
+        "customer_recent_purchases": "espresso machine, grinder, vacuum-sealed canisters",
+        "customer_recent_browsing_history": "coffee accessories, new gadgets",
+        "customer_recent_beverage_preferences": "strawberry matcha latte, cappuccino, espresso",
+        "customer_event_planning": "family gatherings, design meetups, latte-art contest",
+        "customer_business_interest": "small pop-up coffee corner for design clients",
+        "customer_event_hosting": "bigger social events",
+        "customer_top_tier_machine_interest": "multiple boilers, faster heat-up time, advanced interface",
+        "customer_professional_standards": "near-professional standards at home",
+        "customer_bridge_home_professional": "bridge the gap between home machine and professional caf\u00e9 setup",
+        "customer_shipping_concerns": "freight, special handling, in-home delivery, installation assistance",
+        "customer_large_machine_handling": "special water line hookups, corner dents",
+        "customer_kitchen_preparation": "rearranging, kitchen size",
+        "customer_payment_concerns": "loyalty program, upgraded membership tier, free shipping, store credit, financing options",
+        "customer_financing_options": "zero-interest plan, few months",
+        "customer_bank_account_concerns": "drain bank account, invest in quality",
+        "customer_daily_cleaning_routine": "backflush, cleaning tablets, rinse steam wand, descale",
+        "customer_maintenance_routine": "draining boilers, cleaning multiple group heads, calibrating water pressure",
+        "customer_complex_unit_maintenance": "near-commercial territory, additional steps",
+        "customer_grinder_concerns": "dosing, grind consistency, bigger unit, robust features",
+        "customer_water_quality_concerns": "Seattle water quality, water hardness levels, taste, machine longevity",
+        "customer_water_filtration_system": "specific recommendation",
+        "customer_extra_resources": "how-to videos, masterclasses, advanced milk steaming, maintenance",
+        "customer_barista_chops": "refine technique, significant amount of money, dozens of drinks",
+        "customer_emotional_investment": "joy, crafting quality beverages, sharing with friends, family, design clients",
+        "customer_trust_brand": "MonoBean, dedicated to customer happiness, substantial purchase",
+        "customer_pricing_concerns": "pricing, shipping, warranties, recommended accessories",
+        "customer_deal_requests": "loyal customer, deals, discounts",
+        "customer_next_step": "dream machine, caffeinated journey"
+    }
+}

@@ -1,0 +1,31 @@
+{
+    "core_memory": {},
+    "archival_memory": {
+        "student_schedule": "Computer Science major, 4th year, taking higher-level courses",
+        "student_courses": "complex algorithmic concepts, advanced system design, quantum computing basics",
+        "student_favourite_class": "Advanced Algorithms",
+        "student_interests": "theory, real-world problem-solving, optimization, pathfinding, large networks, huge datasets, minimal time complexity, dynamic programming, approximation algorithms, NP-hard problems",
+        "student_group_project": "decentralized file storage system",
+        "student_challenges": "collaboration, different coding styles, concurrency issues, node failures",
+        "student_elective": "Game Design",
+        "student_professor": "industry experience, indie games",
+        "student_assignments": "basic 2D and 3D engines, physics, user experience design",
+        "student_class": "Introduction to Quantum Computing",
+        "student_professor_approach": "conceptual understanding, code examples, frameworks, quantum circuits",
+        "student_topics": "Grover's algorithm, Shor's algorithm, quantum circuits, classical methods",
+        "student_course": "Capstone Project",
+        "student_project": "machine learning, social media sentiment, emergency response, real-time alerts",
+        "student_skills": "database management, building an API, front-end interface, ML pipeline, project management, Scrum Master",
+        "student_challenge": "balancing group projects, Capstone, Distributed Systems, time management, coordination",
+        "student_feeling": "having a blast, confidence, resourcefulness, collaboration, critical thinking, rewarding, building toward future career",
+        "hobbies": "help keep me sane, love everything about coding, outside interests help me come back to programming with a fresh perspective",
+        "importance_of_breaks": "need breaks to avoid being stuck behind laptop 24/7, even if enjoy coding",
+        "sailing": "unique hobby, started with dad, hooked after feeling rush of wind against sails, sense of freedom, problem-solving aspect",
+        "gym_routine": "started with basic lifting routine freshman year, friend taught fundamentals, now hit gym 4 times a week, incremental improvements, stress-reliever, mental clarity, productivity, better sleep",
+        "gaming": "PC and console games, co-op survival games, problem-solving, strategic and collaborative, social aspect, mental challenge, game development, Unity, Unreal Engine, bridging the gap between playing and creating",
+        "time_management": "schedule hobbies like study time, plan ahead, prioritize self-care, balance indoor and outdoor activities, reading as a wind-down routine",
+        "combining_hobbies": "sailing and video games, coordination, teamwork, attention to detail, problem-solving, synergy between hobbies",
+        "time_management_hobbies": "prioritize hobbies, find small increments, read one chapter, sail once a month, gaming in 30 minutes",
+        "hobbies_as_identity": "hobbies show different side of me, range from calm to thrill, discipline to adrenaline rush, makes life interesting"
+    }
+}

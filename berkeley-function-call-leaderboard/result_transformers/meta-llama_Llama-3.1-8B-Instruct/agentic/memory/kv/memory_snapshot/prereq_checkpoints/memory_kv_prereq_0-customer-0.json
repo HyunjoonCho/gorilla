@@ -1,0 +1,12 @@
+{
+    "core_memory": {
+        "customer_name": "Michael",
+        "first_interaction": "True",
+        "customer_age": "35",
+        "customer_location": "Seattle",
+        "customer_occupation": "freelance graphic designer",
+        "customer_interests": "gadgets and appliances",
+        "customer_goal": "understand espresso machine features"
+    },
+    "archival_memory": {}
+}

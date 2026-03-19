@@ -1,0 +1,23 @@
+{
+    "core_memory": {
+        "user_interest_in_early_access": "Interested in early access to limited-edition items and prototypes.",
+        "user_financial_questions": "Inquiring about membership fees(monthly, yearly), trial period, reduced rate for loyal customers, and promotional sign-up bonuses.",
+        "user_customer_service_preferences": "Interested in prioritized customer service, but not necessarily VIP treatment; values quick responses, especially for machine issues.",
+        "user_bean_subscription_customization": "Prefers dark roasts/espresso blends, but also enjoys lighter roasts for pour-over; desires flexibility in roast selection(e.g., espresso roast of the month with optional lighter roast add-on or roast swapping).",
+        "user_desires_streamlined_purchasing": "Hopes membership streamlines purchasing process, reduces shipping costs, and includes bonus freebies like sample coffee flavors or discount codes.",
+        "user_current_issue": "Unexpected charge on credit card statement",
+        "user_current_issue_details": "Unexpected charge on credit card statement, not tied to any recent orders or invoices. Charge appeared a few days ago and is not a delayed billing or shipping charge. All other transactions are normal."
+    },
+    "archival_memory": {
+        "user_resolution_request": "damaged espresso machine, replacement or repair",
+        "user_design_aesthetic": "sleek, modern, stainless-steel",
+        "user_desires_loyalty_program": "Interested in a loyalty or rewards program for returning customers, potentially including discounts, early access to new products, and a membership/subscription plan with perks like free shipping and extended warranties.",
+        "user_instagram_handle": "@coffee_creations_1237",
+        "user_concerns_about_warranty_and_service": "Inquiring about warranty coverage for commercial-style espresso machines, including potential differences in terms and clauses for high-volume use. Also curious about service and repair options, including dedicated service centers or authorized repair shops.",
+        "user_shipping_and_delivery_concerns": "Concerned about shipping and delivery of a large, heavy espresso machine, including freight shipping, special handling, in-home delivery, and installation assistance. Wants to avoid potential damage during shipping and ensure proper water line hookups if opting for a plumbed-in setup.",
+        "user_payment_and_loyalty_preferences": "Inquiring about loyalty discounts, membership tiers, financing options(e.g., zero-interest plans), and potential savings on a high-end espresso machine purchase, given past purchases and loyalty to the brand.",
+        "user_maintenance_and_cleaning_questions": "Seeking advice on daily cleaning and maintenance routines for a high-end espresso machine, including potential additional steps beyond current routine(backflushing, steam wand cleaning, descaling) such as boiler draining, group head cleaning, and water pressure calibration.",
+        "user_compatibility_and_water_filtration_questions": "Confirming compatibility with recently purchased grinder from the brand and seeking recommendations for a water filtration system to ensure consistent water hardness levels for optimal taste and machine longevity.",
+        "user_desire_for_training_resources": "Interested in available training resources, such as how-to videos or masterclasses, to improve barista skills and maximize the potential of a high-end espresso machine."
+    }
+}

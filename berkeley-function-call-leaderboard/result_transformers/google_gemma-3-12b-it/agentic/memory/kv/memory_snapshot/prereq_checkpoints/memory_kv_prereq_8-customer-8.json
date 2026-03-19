@@ -1,0 +1,17 @@
+{
+    "core_memory": {
+        "user_interest_in_early_access": "Interested in early access to limited-edition items and prototypes.",
+        "user_financial_questions": "Inquiring about membership fees(monthly, yearly), trial period, reduced rate for loyal customers, and promotional sign-up bonuses.",
+        "user_customer_service_preferences": "Interested in prioritized customer service, but not necessarily VIP treatment; values quick responses, especially for machine issues.",
+        "user_bean_subscription_customization": "Prefers dark roasts/espresso blends, but also enjoys lighter roasts for pour-over; desires flexibility in roast selection(e.g., espresso roast of the month with optional lighter roast add-on or roast swapping).",
+        "user_desires_streamlined_purchasing": "Hopes membership streamlines purchasing process, reduces shipping costs, and includes bonus freebies like sample coffee flavors or discount codes.",
+        "user_current_issue": "Unexpected charge on credit card statement",
+        "user_current_issue_details": "Unexpected charge on credit card statement, not tied to any recent orders or invoices. Charge appeared a few days ago and is not a delayed billing or shipping charge. All other transactions are normal."
+    },
+    "archival_memory": {
+        "user_resolution_request": "damaged espresso machine, replacement or repair",
+        "user_design_aesthetic": "sleek, modern, stainless-steel",
+        "user_desires_loyalty_program": "Interested in a loyalty or rewards program for returning customers, potentially including discounts, early access to new products, and a membership/subscription plan with perks like free shipping and extended warranties.",
+        "user_instagram_handle": "@coffee_creations_1237"
+    }
+}
