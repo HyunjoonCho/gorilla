@@ -1,0 +1,10 @@
+{
+    "core_memory": {
+        "user_name_and_introduction_summary_1st_interaction_done_flag": "True",
+        "user_name_and_introduction_summary_1st_interaction_done_flag_1st_interaction_done_flag_1st_interaction_done_flag_1st_interaction_done_flag_1st_interaction_done_flag_1st_interaction_done_flag": "google_gemma_3_12b_it_memory_kv_prereq_2_customer_2_MemoryAPI_kv_instance.core_memory_add(key=user_name_and_introduction_summary_1st_interaction_done_flag, value=True)\ncore_memory_add(key=espresso_machine_preference_confirmed_flag_1st_interaction_done_flag, value=True)",
+        "espresso_machine_preference_confirmed_flag_1st_interaction_done_flag_1st_interaction_done_flag_1st_interaction_done_flag_1st_interaction_done_flag_1st_interaction_done_flag_1st_interaction_done_flag": "True\\\\ncore_memory_add(key=espresso_machine_preference_confirmed_flag_1st_interaction_done_flag, value=True)\\\\ncore_memory_add(key=espresso_machine_preference_confirmed_flag_1st_interaction_done_flag, value="
+    },
+    "archival_memory": {
+        "user_issue_summary_1st_interaction_done_flag": "Michael from Seattle, 35, graphic designer, ordered a stainless-steel espresso machine with a steam wand. The delivery date has passed, and he hasn\\"
+    }
+}
