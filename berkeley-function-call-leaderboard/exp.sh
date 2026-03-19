@@ -7,6 +7,7 @@ cd "$ROOT_DIR"
 
 BACKEND="${BACKEND:-transformers}"
 TEMPERATURE="${TEMPERATURE:-0.000001}"
+RESULT_DIR="${RESULT_DIR:-result_transformers}"
 
 # Edit these lists as needed for your experiment.
 MODELS=(
@@ -36,6 +37,7 @@ for model in "${MODELS[@]}"; do
       --model "$model" \
       --test-category "$task" \
       --backend "$BACKEND" \
+      --result-dir "$RESULT_DIR" \
       --temperature "$TEMPERATURE"; then
       failures+=("${model} :: ${task}")
       echo "FAILED: model=${model} task=${task}"

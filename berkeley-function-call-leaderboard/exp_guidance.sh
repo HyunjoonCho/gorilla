@@ -11,16 +11,14 @@ RESULT_DIR="${RESULT_DIR:-result_guidance}"
 
 MODELS=(
   "meta-llama/Llama-3.1-8B-Instruct"
-  "microsoft/phi-4"
   "google/gemma-3-12b-it"
-  "mistralai/Ministral-8B-Instruct-2410"
 )
 
 TASKS=(
   "simple_python"
   "live_simple"
-#  "multi_turn_base"
-#  "memory_kv"
+  "multi_turn_base"
+  "memory_kv"
 #  "web_search_base"
 )
 

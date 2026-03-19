@@ -6,23 +6,21 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT_DIR"
 
 BACKEND="${BACKEND:-transformers}"
-RESULT_DIR="${RESULT_DIR:-result_transformers}"
-SCORE_DIR="${SCORE_DIR:-score_transformers}"
+RESULT_DIR="${RESULT_DIR:-result_guidance}"
+SCORE_DIR="${SCORE_DIR:-score_guidance}"
 
 # Edit these lists as needed for your experiment.
 MODELS=(
   "meta-llama/Llama-3.1-8B-Instruct"
-  "microsoft/phi-4"
   "google/gemma-3-12b-it"
-  "mistralai/Ministral-8B-Instruct-2410"
 )
 
 TASKS=(
   "simple_python"
   "live_simple"
   "multi_turn_base"
-  "memory_kv"
-  "web_search_base"
+#  "memory_kv"
+#  "web_search_base"
 )
 
 failures=()
@@ -31,6 +29,7 @@ for model in "${MODELS[@]}"; do
   for task in "${TASKS[@]}"; do
     echo "============================================================"
     echo "Evaluating model=${model} task=${task}"
+    echo "backend=${BACKEND} result_dir=${RESULT_DIR} score_dir=${SCORE_DIR}"
     echo "============================================================"
 
     if ! bfcl evaluate \
