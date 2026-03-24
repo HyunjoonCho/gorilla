@@ -12,17 +12,19 @@ SCORE_DIR="${SCORE_DIR:-score_transformers}"
 # Edit these lists as needed for your experiment.
 MODELS=(
   "meta-llama/Llama-3.1-8B-Instruct"
-  "microsoft/phi-4"
   "google/gemma-3-12b-it"
-  "mistralai/Ministral-8B-Instruct-2410"
+  "google/gemma-3-4b-it"
+  "google/gemma-3-1b-it"
+  "Qwen/Qwen3-4B-Instruct-2507"
+  "Qwen/Qwen3-8B"
 )
 
 TASKS=(
   "simple_python"
   "live_simple"
+  "multiple"
   "multi_turn_base"
   "memory_kv"
-  "web_search_base"
 )
 
 failures=()

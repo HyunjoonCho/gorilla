@@ -1,0 +1,18 @@
+{
+    "core_memory": {
+        "user_club_involvement": "User joined Computer Science Society in later years, hosts weekly meetups on tech topics, industry speakers, and peer collaboration for concepts like concurrency/containerization. Regrets not joining more clubs freshman year due to academic focus.",
+        "user_vr_ar_club_involvement": "Attends VR/AR Club since sophomore year, hands-on projects in VR lab, demos like AR tutor for math, collaborative Unity/Unreal research on immersive analytics.",
+        "user_campus_activities": "Attends campus radio station open-mic nights, featuring diverse performances like poetry, comedy, and music. Friend from Distributed Systems class showcased acoustic set, revealing unexpected talents beyond coding.",
+        "user_campus_spots": "User visits central lawn for campus events, featuring student org booths with free pizza, Tech Fest(engineering/CS focus) with demos and recruiter engagement.",
+        "user_hackathon_experience": "Participated in campus hackathon, formed team with casual acquaintances, shared experiences like coding, debugging, and eating stale pizza, highlighting collaborative campus culture.",
+        "user_dorm_life": "Stayed in Engi-House(engineering dorm), experienced late-night coding sessions, e-sports streaming, stress-induced energy drink binges, and social events like potlucks, Netflix marathons, and talent shows.",
+        "user_volunteering_outreach": "Volunteers at CS department's Tech for Good day, runs workshops on web dev/Python, mentors high schoolers in coding. Finds fulfillment in seeing students' excitement and sharing own journey in STEM."
+    },
+    "archival_memory": {
+        "research_project_oceanic_temperature": "First research project: Visualizing oceanic temperature changes using Python for data aggregation and D3.js for interactive dashboards. Co-authored first paper on the system.",
+        "research_project_immersive_analytics": "Current research: Immersive analytics using VR/AR for 3D data visualization. Experimenting with Unity/Unreal for interactive, real-time data streaming in virtual environments.",
+        "research_experience_details": "Undergrad research since sophomore year in data visualization for scientific datasets, using JavaScript/D3.js for interactive dashboards. First project: Visualizing oceanic temperature changes using Python for data aggregation and D3.js for interactive dashboards. Co-authored first paper on the system. Current project: Immersive analytics using VR/AR for 3D data visualization. Experimenting with Unity/Unreal for interactive, real-time data streaming in virtual environments.",
+        "user_hobby_combinations": "User combines hobbies like sailing and co-op gaming, noting synergies in teamwork, role-based strategy, and problem-solving. Example: Sailing requires coordination akin to in-game strategy, with each activity demanding attention to detail and collaborative execution.",
+        "user_hobbies": "User enjoys sailing as a hobby, started with family trips to a marina, now part of a local club. Provides stress relief from academic pressures, offers a sense of freedom and problem-solving similar to coding."
+    }
+}

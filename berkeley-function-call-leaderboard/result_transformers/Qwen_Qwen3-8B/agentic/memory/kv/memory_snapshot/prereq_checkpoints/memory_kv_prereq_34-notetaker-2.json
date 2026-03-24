@@ -1,0 +1,11 @@
+{
+    "core_memory": {
+        "organizing_closet_donate": "sort through closet\u2014donate old clothes",
+        "organizing_shred_mail": "shred old mail",
+        "organizing_pantry_restock": "restock pantry\u2014running low on rice and cereal",
+        "diy_cabinet_handle": "tighten loose cabinet handle",
+        "diy_bathroom_lightbulb": "replace bathroom lightbulb",
+        "diy_wall_scuffs": "patch up minor wall scuffs"
+    },
+    "archival_memory": {}
+}

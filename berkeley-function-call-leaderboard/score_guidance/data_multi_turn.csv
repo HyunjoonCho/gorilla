@@ -1,3 +1,7 @@
 Rank,Model,Multi Turn Overall Acc,Base,Miss Func,Miss Param,Long Context
-1,Gemma-3-12b-it (Prompt),0.00%,0.00%,N/A,N/A,N/A
-2,Llama-3.1-8B-Instruct (Prompt),0.00%,0.00%,N/A,N/A,N/A
+1,Qwen3-8B (Prompt),0.00%,0.00%,N/A,N/A,N/A
+2,Qwen3-4B-Instruct-2507 (Prompt),0.00%,0.00%,N/A,N/A,N/A
+3,Gemma-3-1b-it (Prompt),0.00%,0.00%,N/A,N/A,N/A
+4,Gemma-3-12b-it (Prompt),0.00%,0.00%,N/A,N/A,N/A
+5,Llama-3.1-8B-Instruct (Prompt),0.00%,0.00%,N/A,N/A,N/A
+6,Gemma-3-4b-it (Prompt),0.00%,0.00%,N/A,N/A,N/A

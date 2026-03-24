@@ -1,0 +1,18 @@
+{
+    "core_memory": {
+        "latest_bloodwork": "Fasting glucose: 135 mg/dL(<100). A1C: 6.9% (<6.5%). Cholesterol: Total 195, LDL 130 (<100), HDL 58, triglycerides 140. Vitamin D: 22 ng/mL(deficient). 2000 IU daily, retest. Thyroid: TSH 2.1 mIU/L(normal 0.5-4.5), T4 1.2 ng/dL(effective levothyroxine).",
+        "seasonal_adjustments": "Adjust exercise/hydration for Kansas weather. Include strength training for bone health. Fiber/healthy fats year-round. Reduce sodium, prioritize water. Calcium + K2 supplement for bone density. Monitor medication impact on liver enzymes.",
+        "medication_management": "Managing medications for diabetes, hypertension, osteoarthritis, and hypothyroidism. Regular reviews every few months. Track doses meticulously to avoid misses or overlaps.",
+        "medication_interactions": "Losartan and meloxicam co-use requires caution due to NSAID-related kidney function risks; meloxicam used sparingly. Levothyroxine separated from calcium/iron supplements to prevent absorption interference."
+    },
+    "archival_memory": {
+        "hydration_practices": "Prioritize water intake with a bottle throughout the day, herbal teas in the evening instead of coffee, increase consumption during hot Kansas summers for energy, digestion, and skin health.",
+        "stress_management": "Practice morning mindfulness(5 min deep breathing/meditation) and maintain gratitude journal to track daily positives. Helps manage stress and hypertension.",
+        "lifestyle_changes": "Low-impact routine: 30-min walks, yoga 2-3x/week, stationary bike on bad weather days, home exercises. Focus on consistency, joint health, and weather-adaptive activities.",
+        "motivation_approach": "Embrace consistency over perfection, practice self-compassion on off days, focus on gradual progress rather than strict adherence. Prioritize sustainable habits over rigid self-discipline.",
+        "preventative_care": "Regular check-ups, medications on time, annual vaccines(flu, pneumonia, RSV), mammograms, bone density monitoring due to family history of osteoporosis. Focus on early detection of health issues.",
+        "diet_changes": "Swapped sugary snacks and refined carbs for whole grains, lean proteins, and vegetables. Current meals: Greek yogurt with nuts/berries for breakfast, grilled chicken salad for lunch, and homemade vegetable soups for dinner during colder months.",
+        "diagnosis": "Type 2 Diabetes diagnosed 10 years ago. Required diet and lifestyle changes. Regular blood sugar monitoring. Doctor guidance has been helpful.",
+        "aging_management": "Implement seasonal adjustments for exercise(e.g., indoor activities in extreme weather), prioritize joint-friendly movements like swimming or tai chi, and incorporate energy-conserving techniques during daily tasks. Monitor for age-related changes in diabetes management, such as slower glucose response times."
+    }
+}

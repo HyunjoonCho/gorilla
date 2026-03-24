@@ -1,0 +1,30 @@
+{
+    "core_memory": {
+        "student_major": "Computer Science",
+        "year": "fourth year",
+        "current_semester_focus": "higher-level courses",
+        "academic_progress": "transitioning from intro to advanced topics like algorithmic concepts, system design, and quantum computing basics",
+        "favorite_class": "Advanced Algorithms",
+        "class_interest": "theory connecting to real-world problem-solving, e.g., pathfinding in large networks, handling huge datasets with minimal time complexity",
+        "topics_covered": "dynamic programming, approximation algorithms for NP-hard problems"
+    },
+    "archival_memory": {
+        "course_distributed_systems": "CS 2631, second hardest course, involves heavy reading, group discussions, and a major project simulating a decentralized file storage system",
+        "group_project_challenges": "collaborating with peers having different coding styles and project visions, handling concurrency issues and node failures",
+        "project_milestone": "spending hours troubleshooting a bug caused by a misplaced bracket in a config file, leading to a sense of accomplishment after resolution",
+        "elective_game_design": "counts toward major when combined with specific classes, taught by an industry professor with experience in indie games, covers 2D/3D engines, physics implementation, and UX design",
+        "assignment_example": "designed a labyrinth-based mini-game focusing on balancing difficulty curve to prevent player frustration",
+        "learning_outcome": "creative and rewarding experience in game design, emphasizing player engagement and difficulty balance",
+        "class_quantum_computing": "Introduction to Quantum Computing, initially intimidating but now enjoyed due to conceptual focus over pure math, includes linear algebra and code examples in quantum circuit simulation frameworks, covers basic algorithms like Grover's and Shor's to understand theoretical advantages over classical methods",
+        "capstone_project": "end-of-year project using machine learning to analyze social media sentiment for emergency response, involves real-time detection of crisis indicators from tweets or posts, aims to provide real-time alerts to city officials or campus security, integrates database management, API development, front-end interface, and ML pipeline",
+        "project_management": "team employs agile methodology with a designated Scrum Master, weekly sprints, daily stand-ups to maintain organization and progress",
+        "elective_philosophy_of_mind": "last required non-CS elective, explores consciousness, mind, and implications for AI, involves extensive class discussions and analysis of abstract concepts, focuses on ethical considerations in AI development",
+        "paper_topic": "wrote a paper on whether strong AI could ever experience qualia, such as subjective experiences of color or pain, a significant topic in philosophy with deep implications for AI ethics",
+        "class_schedule_monday_wednesday": "Mondays and Wednesdays: start at 9:30 am with Advanced Algorithms, short break, then Distributed Systems at 11:00 am, followed by Capstone meetings which vary in format\u2014lectures, lab work, or team time",
+        "class_schedule_tuesday_thursday": "Tuesdays and Thursdays: morning Quantum Computing, afternoon Game Design, Thursday evenings with Philosophy of Mind which can be exhausting if tired",
+        "friday_schedule": "Fridays are open with no classes, but spent on assignments, group projects, or labs, plus undergrad research hours in a data visualization lab for big scientific datasets",
+        "project_challenges": "Capstone project consumes about 10 hours per week, especially when encountering major bugs or model training issues; Distributed Systems project also demands significant time; group meets at least twice a week; relies on Slack or Discord for coordination; scheduling five people is a challenge",
+        "project_significance": "this is among the last academic opportunities to work on a project without job pressures, focused purely on learning and collaboration",
+        "overall_experience": "transitioned from dreading tough CS classes to feeling confident in problem-solving and time management; occasional late nights are unavoidable but less intimidating; senior year has built confidence in resourcefulness, collaboration, and critical thinking; all coursework feels directly aligned with future career goals, providing a strong sense of fulfillment and purpose"
+    }
+}

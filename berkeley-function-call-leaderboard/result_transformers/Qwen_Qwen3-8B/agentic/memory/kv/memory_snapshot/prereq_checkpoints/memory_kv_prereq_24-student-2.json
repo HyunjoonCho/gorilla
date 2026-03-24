@@ -1,0 +1,12 @@
+{
+    "core_memory": {
+        "user_academic_info": "User is a fourth-year Computer Science major with a heavy schedule including advanced courses on complex algorithms, advanced system design, and quantum computing basics.",
+        "user_hobbies": "User enjoys sailing as a hobby, started with family trips to a marina, now part of a local club. Provides stress relief from academic pressures, offers a sense of freedom and problem-solving similar to coding.",
+        "user_hobby_combinations": "User combines hobbies like sailing and co-op gaming, noting synergies in teamwork, role-based strategy, and problem-solving. Example: Sailing requires coordination akin to in-game strategy, with each activity demanding attention to detail and collaborative execution.",
+        "research_experience": "Undergrad research since sophomore year in data visualization for scientific datasets, using JavaScript/D3.js for interactive dashboards.",
+        "research_project_oceanic_temperature": "First research project: Visualizing oceanic temperature changes using Python for data aggregation and D3.js for interactive dashboards. Co-authored first paper on the system.",
+        "research_project_immersive_analytics": "Current research: Immersive analytics using VR/AR for 3D data visualization. Experimenting with Unity/Unreal for interactive, real-time data streaming in virtual environments.",
+        "research_reading_habits": "Focus on academic reading: Skim papers by abstract/introduction/conclusion. Share relevant findings with lab for collaborative problem-solving."
+    },
+    "archival_memory": {}
+}
