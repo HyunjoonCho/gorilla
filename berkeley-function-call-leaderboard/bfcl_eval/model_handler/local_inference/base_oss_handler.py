@@ -74,9 +74,9 @@ class OSSHandler(BaseHandler, EnforceOverrides):
         self.tool_constraint_engine = str(
             getattr(self, "tool_constraint_engine", "none")
         ).lower()
-        if self.tool_constraint_engine not in {"none", "guidance"}:
+        if self.tool_constraint_engine not in {"none", "guidance", "guidance_tool_only"}:
             raise ValueError(
-                f"Unsupported tool constraint engine '{self.tool_constraint_engine}'. Supported values: none, guidance."
+                f"Unsupported tool constraint engine '{self.tool_constraint_engine}'. Supported values: none, guidance, guidance_tool_only."
             )
         self.guidance_repair_attempts = int(
             getattr(self, "guidance_repair_attempts", 2)
@@ -611,6 +611,7 @@ class OSSHandler(BaseHandler, EnforceOverrides):
                 model=self.model,
                 tokenizer=self.tokenizer,
                 config=GuidanceConstraintConfig(
+                    mode=self.tool_constraint_engine,
                     repair_attempts=self.guidance_repair_attempts,
                     max_calls_per_step=self.guidance_max_calls_per_step,
                     max_json_depth=self.guidance_max_json_depth,

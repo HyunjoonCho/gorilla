@@ -234,7 +234,7 @@ bfcl generate \
   --model MODEL_NAME \
   --test-category TEST_CATEGORY \
   --backend {sglang|vllm|transformers} \
-  --tool-constraint-engine {none|guidance} \
+  --tool-constraint-engine {none|guidance|guidance_tool_only} \
   --guidance-repair-attempts 2 \
   --guidance-max-calls-per-step 4 \
   --guidance-max-json-depth 3 \
@@ -253,7 +253,9 @@ bfcl generate \
 - `--enable-lora` (optional): Enable LoRA for the vLLM backend. This flag is required to use LoRA modules. This only works when backend is `vllm`; using it with other backends raises an error.
 - `--max-lora-rank` (optional): Specify the maximum LoRA rank for the vLLM backend. This is an integer value. This only works when backend is `vllm` and `--enable-lora` flag is set.
 - `--lora-modules` (optional): Specify the path to the LoRA modules for the vLLM backend in `name="path"` format. This allows evaluation of fine-tuned models with LoRA adapters. You can specify multiple LoRA modules by repeating this argument. This only works when backend is `vllm` and `--enable-lora` flag is set.
-- `--tool-constraint-engine` (optional): Choose `none` (default) or `guidance`. Guidance mode currently applies to local prompting flow on `transformers` backend only.
+- `--tool-constraint-engine` (optional): Choose `none` (default), `guidance`, or `guidance_tool_only`. These Guidance modes currently apply to local prompting flow on `transformers` backend only.
+- `guidance`: Guidance selects tool names and generates/validates arguments under the current constrained engine.
+- `guidance_tool_only`: Guidance selects only the first tool name, then freely generates the remaining text with `guidance.gen(...)`. In this mode, the repair/max-calls/max-depth knobs are effectively unused.
 - `--guidance-repair-attempts` (optional, default `2`): Number of whole-object regeneration attempts after constrained-argument validation fails.
 - `--guidance-max-calls-per-step` (optional, default `4`): Upper bound on constrained tool calls emitted in one step.
 - `--guidance-max-json-depth` (optional, default `3`): Maximum recursive depth for constrained array/object argument generation.

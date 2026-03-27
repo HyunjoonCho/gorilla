@@ -25,7 +25,7 @@ from bfcl_eval.model_handler.local_inference.base_oss_handler import OSSHandler
 from bfcl_eval.utils import *
 from tqdm import tqdm
 
-SUPPORTED_TOOL_CONSTRAINT_ENGINES = ("none", "guidance")
+SUPPORTED_TOOL_CONSTRAINT_ENGINES = ("none", "guidance", "guidance_tool_only")
 
 
 def _normalize_backend(raw_backend: str) -> str:

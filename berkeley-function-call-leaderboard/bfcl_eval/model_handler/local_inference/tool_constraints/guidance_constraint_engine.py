@@ -41,6 +41,7 @@ class GuidanceGenerationError(GuidanceConstraintError):
 
 @dataclass
 class GuidanceConstraintConfig:
+    mode: str = "guidance"
     repair_attempts: int = 2
     max_calls_per_step: int = 1
     max_json_depth: int = 3
@@ -124,7 +125,25 @@ class GuidanceConstraintEngine:
     ) -> tuple[str, dict[str, Any]]:
         tool_map = {tool.get("name"): tool for tool in tools if tool.get("name")}
         if not tool_map:
-            return "[]", {"constraint_engine": "guidance", "selected_tools": []}
+            return "[]", {"constraint_engine": self.config.mode, "selected_tools": []}
+
+        if self.config.mode == "guidance_tool_only":
+            name = self._select(
+                self._prompt(formatted_prompt, []),
+                [*tool_map],
+                "tool_name",
+            )
+            prefix = f"{name}("
+            tail = self._runtime_adapter.gen(
+                formatted_prompt.rstrip() + prefix,
+                key="tool_tail",
+                max_tokens=max_new_tokens,
+            )
+            return prefix + tail, {
+                "constraint_engine": "guidance_tool_only",
+                "selected_tools": [name],
+                "selected_tool_count": 1,
+            }
 
         selected_calls: list[tuple[str, dict[str, Any]]] = []
         options = [*tool_map] # exclude NO_TOOL_SELECTION for now

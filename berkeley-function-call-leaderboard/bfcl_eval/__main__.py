@@ -170,7 +170,7 @@ def generate(
     tool_constraint_engine: str = typer.Option(
         "none",
         "--tool-constraint-engine",
-        help="Structured tool-calling constraint engine for local OSS prompting flow (`none` or `guidance`).",
+        help="Structured tool-calling constraint engine for local OSS prompting flow (`none`, `guidance`, or `guidance_tool_only`).",
     ),
     guidance_repair_attempts: int = typer.Option(
         2,
