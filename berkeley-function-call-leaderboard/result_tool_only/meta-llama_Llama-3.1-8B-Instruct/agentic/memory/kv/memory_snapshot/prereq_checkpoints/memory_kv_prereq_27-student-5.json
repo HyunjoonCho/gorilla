@@ -1,0 +1,26 @@
+{
+    "core_memory": {
+        "student_name": "John Doe",
+        "student_major": "Computer Science",
+        "student_year": "4th"
+    },
+    "archival_memory": {
+        "student_plans": "industry for 5 years, with possibility of grad school later",
+        "student_pressure": "unspoken pressure to land something right after graduation",
+        "student_current_mindset": "needing a solid plan or prospective routes ASAP",
+        "student_travel_interest": "exploring new places, blend of modern technology and traditional culture",
+        "student_major": "Computer Science",
+        "student_year": "4th",
+        "student_sailing_experience": "sailing trip off the coast of Maine",
+        "student_travel_destination": "Japan",
+        "student_family_vacation": "Europe",
+        "student_weekend_getaway": "state park or nearby beach town",
+        "student_future_trip": "West Coast",
+        "student_internship_location": "Silicon Valley",
+        "student_dog_name": "Archie",
+        "student_dog_breed": "Golden Retriever",
+        "student_travel_motivation": "experiencing new places, stepping outside usual environment, collecting postcards",
+        "student_future_career_goals": "remote work days or flexible scheduling",
+        "student_travel_passion": "nurturing passion for travel"
+    }
+}

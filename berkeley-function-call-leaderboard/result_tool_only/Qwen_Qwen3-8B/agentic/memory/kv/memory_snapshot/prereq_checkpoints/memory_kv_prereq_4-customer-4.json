@@ -1,0 +1,14 @@
+{
+    "core_memory": {
+        "user_preferred_finish": "stainless_steel",
+        "user_design_preference": "sleek_modern",
+        "user_returning_customer": "Yes",
+        "user_steam_wand_preference": "Yes",
+        "user_grinding_preference": "Prioritizes fresh-ground beans for improved taste, seeks high-quality electric grinder to enhance home coffee experience",
+        "user_payment_preferences": "Flexible payment methods, open to financing or payment plans for subscriptions, prefers simplicity unless clear advantages exist, previously used credit card",
+        "user_additional_coffee_tools_interest": "Expressed curiosity about digital scales and temperature-controlled kettles for brewing improvement, prefers tools that balance functionality with aesthetic appeal without overcomplicating kitchen setup"
+    },
+    "archival_memory": {
+        "user_subscription_interest": "Expressed interest in coffee bean subscription service pairing with grinder settings, requesting recommended roasts for espresso, drip, and pour-over, and seeking updates on future availability"
+    }
+}

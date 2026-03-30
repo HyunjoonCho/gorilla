@@ -1,0 +1,13 @@
+{
+    "core_memory": {
+        "customer_espresso_machine_choice": "stainless-steel finish",
+        "customer_reason_for_choice": "caf\u00e9-like experience and design aesthetic",
+        "customer_desired_model": "model with steam wand",
+        "customer_counter_size": "38 square feet"
+    },
+    "archival_memory": {
+        "customer_new_interest": "kitchen appliances",
+        "customer_new_interest_product": "coffee grinder",
+        "customer_shipping_issue": "hiccups"
+    }
+}

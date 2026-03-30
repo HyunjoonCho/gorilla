@@ -1,0 +1,9 @@
+{
+    "core_memory": {
+        "user_name": "Michael",
+        "first_time_user": "True",
+        "user_concern_warranty": "length of warranty, ease of service",
+        "user_concern_drip_temperature": "needs reliably hot coffee, preferably with adjustable temperature settings"
+    },
+    "archival_memory": {}
+}

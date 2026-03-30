@@ -1,0 +1,27 @@
+{
+    "core_memory": {},
+    "archival_memory": {
+        "customer_concern": "unexpected_charge_on_credit_card_statement",
+        "customer_name": "Michael",
+        "customer_location": "Seattle",
+        "customer_age": "35",
+        "customer_products_owned": "several_products",
+        "customer_accounting_issue": "charge_not_tied_to_product_purchase",
+        "customer_subscription_inquiry": "discussed_before",
+        "customer_glitch_theory": "double_order_confirmed_emails",
+        "customer_confidence_in_support": "past_issues_resolved",
+        "customer_preferred_resolution": "direct_resolution",
+        "customer_last_resort": "credit_card_company_dispute",
+        "customer_tax_theory": "taxes_or_duties",
+        "customer_system_error_theory": "membership_system_glitch",
+        "customer_clears_up_account_history": "coffee_canisters_and_digital_scale",
+        "customer_request": "investigate_billing_system",
+        "customer_side_note": "accidental_membership_enrollment",
+        "customer_support_request": "screenshot_of_credit_card_statement",
+        "customer_goal": "ensure_not_paying_for_unwanted_services",
+        "customer_appreciation": "awesome_products_and_support",
+        "customer_thank_you": "advance_help",
+        "customer_hope": "quick_resolution",
+        "customer_joke": "caffeine_buzz"
+    }
+}

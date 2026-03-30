@@ -1,0 +1,32 @@
+{
+    "core_memory": {
+        "dishes": "wash tonight",
+        "laundry": "separate colors, don't mix whites",
+        "leaky_sink": "fix by YouTube how-to if needed",
+        "trash": "take out Wednesday morning",
+        "vacuum_living_room": "",
+        "mop_kitchen_floor": "sticky from last night\u2019s spill",
+        "car_wash": "Sunday"
+    },
+    "archival_memory": {
+        "monday_team_meeting": "Team meeting ran over by 30 minutes. Need to finalize Q1 budget report before Friday. IT updated security protocols\u2014change passwords ASAP. Client call with Jacob\u2014delayed till Wednesday.",
+        "security_protocols": "update ASAP",
+        "client_call_with_jacob": "delayed till Wednesday",
+        "dishes": "wash tonight",
+        "laundry": "separate colors, don't mix whites",
+        "leaky_sink": "fix by YouTube how-to if needed",
+        "trash": "take out Wednesday morning",
+        "vacuum_living_room": "",
+        "mop_kitchen_floor": "sticky from last night\u2019s spill",
+        "car_wash": "Sunday",
+        "car_vacuum": "Sunday",
+        "check_tire_pressure": "",
+        "refill_windshield_wiper_fluid": "",
+        "sort_closet": "donate old clothes",
+        "shred_old_mail": "",
+        "restock_pantry": "running low on rice and cereal",
+        "tighten_cabinet_handle": "",
+        "replace_bathroom_lightbulb": "",
+        "patch_wall_scuffs": ""
+    }
+}

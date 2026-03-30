@@ -1,0 +1,31 @@
+{
+    "core_memory": {
+        "customer_espresso_machine_choice": "stainless-steel finish",
+        "customer_reason_for_choice": "caf\u00e9-like experience and design aesthetic",
+        "customer_desired_model": "model with steam wand",
+        "customer_counter_size": "38 square feet"
+    },
+    "archival_memory": {
+        "customer_new_interest": "kitchen appliances",
+        "customer_new_interest_product": "coffee grinder",
+        "customer_shipping_issue": "hiccups",
+        "customer_name": "Michael",
+        "customer_city": "Seattle",
+        "customer_order_status": "multiple orders in progress",
+        "customer_age": "35",
+        "customer_location": "Seattle",
+        "customer_product_interest": "Garmin collaboration",
+        "customer_shipping_concern": "item stored in different location",
+        "customer_shipping_update": "order from across the country moving along",
+        "customer_product_priority": "coffee grinder",
+        "customer_travel_plans": "Portland",
+        "customer_concern": "security hold",
+        "customer_enthusiasm": "adding items to coffee station",
+        "customer_hobby": "coffee shop",
+        "customer_friendship": "social circle",
+        "customer_goal": "premium brews",
+        "customer_request": "personal retrieval of packages",
+        "customer_summary": "juggling two orders",
+        "customer_appreciation": "communicative and helpful support"
+    }
+}

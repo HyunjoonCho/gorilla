@@ -15,8 +15,8 @@ MODELS=(
   "google/gemma-3-12b-it"
   "google/gemma-3-4b-it"
   "google/gemma-3-1b-it"
-  "Qwen/Qwen3-4B-Instruct-2507"
   "Qwen/Qwen3-8B"
+  "Qwen/Qwen3-4B-Instruct-2507"
 )
 
 TASKS=(

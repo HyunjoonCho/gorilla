@@ -1,0 +1,22 @@
+{
+    "core_memory": {
+        "customer_espresso_machine_choice": "stainless-steel finish",
+        "customer_reason_for_choice": "caf\u00e9-like experience and design aesthetic",
+        "customer_desired_model": "model with steam wand",
+        "customer_counter_size": "38 square feet"
+    },
+    "archival_memory": {
+        "customer_espresso_machine_choice": "stainless-steel finish",
+        "customer_reason_for_choice": "caf\u00e9-like experience and design aesthetic",
+        "customer_desired_model": "model with steam wand",
+        "customer_counter_size": "38 square feet",
+        "customer_promo_code": "STAINLESS17",
+        "customer_payment_methods": "credit card, PayPal, Apple Pay, financing option",
+        "customer_shipping_times": "3-7 business days for processing, 7-14 business days for shipping",
+        "customer_shipping_costs": "free standard shipping on orders over $200, $20 for expedited shipping",
+        "customer_tracking_information": "yes, tracking information will be provided via email once the order is shipped",
+        "customer_return_policy": "yes, returns and exchanges are accepted within 30 days of delivery, customer pays for return shipping",
+        "customer_coffee_recommendations": "yes, we recommend the following coffee beans and grinders:",
+        "customer_appreciation": "customer appreciates responsive and detailed support"
+    }
+}

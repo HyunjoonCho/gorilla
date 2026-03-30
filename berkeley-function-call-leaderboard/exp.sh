@@ -9,6 +9,7 @@ BACKEND="${BACKEND:-transformers}"
 TEMPERATURE="${TEMPERATURE:-0.000001}"
 TRANSFORMERS_RESULT_DIR="${RESULT_DIR:-result_transformers}"
 GUIDANCE_RESULT_DIR="${RESULT_DIR:-result_guidance}"
+TOOL_ONLY_RESULT_DIR="${RESULT_DIR:-result_tool_only}"
 
 # Edit these lists as needed for your experiment.
 MODELS=(
@@ -16,8 +17,8 @@ MODELS=(
   "google/gemma-3-12b-it"
   "google/gemma-3-4b-it"
   "google/gemma-3-1b-it"
-  "Qwen/Qwen3-4B-Instruct-2507"
   "Qwen/Qwen3-8B"
+  "Qwen/Qwen3-4B-Instruct-2507"
 )
 
 TASKS=(
@@ -64,6 +65,25 @@ for model in "${MODELS[@]}"; do
       failures+=("${model} :: ${task}")
       echo "FAILED: model=${model} task=${task}"
     fi
+
+    echo "============================================================"
+    echo "Running model=${model} task=${task}"
+    echo "backend=${BACKEND}/tool_only result_dir=${TOOL_ONLY_RESULT_DIR}"
+    echo "============================================================"
+
+    if ! bfcl generate \
+      --model "$model" \
+      --test-category "$task" \
+      --backend "$BACKEND" \
+      --temperature "$TEMPERATURE" \
+      --result-dir "$TOOL_ONLY_RESULT_DIR" \
+      --tool-constraint-engine guidance_tool_only \
+      --guidance-max-calls-per-step 1 \
+      --constraint-strict; then
+      failures+=("${model} :: ${task}")
+      echo "FAILED: model=${model} task=${task}"
+    fi
+
   done
 done
 
