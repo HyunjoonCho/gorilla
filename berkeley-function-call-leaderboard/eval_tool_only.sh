@@ -14,7 +14,6 @@ MODELS=(
   "meta-llama/Llama-3.1-8B-Instruct"
   "google/gemma-3-12b-it"
   "google/gemma-3-4b-it"
-  "google/gemma-3-1b-it"
   "Qwen/Qwen3-8B"
   "Qwen/Qwen3-4B-Instruct-2507"
 )
@@ -23,8 +22,8 @@ TASKS=(
   "simple_python"
   "live_simple"
   "multiple"
-  "multi_turn_base"
-  "memory_kv"
+#  "multi_turn_base"
+#  "memory_kv"
 )
 
 failures=()
