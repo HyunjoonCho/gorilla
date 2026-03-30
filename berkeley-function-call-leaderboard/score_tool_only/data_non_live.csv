@@ -1,7 +1,7 @@
 Rank,Model,Non-Live Overall Acc,AST Summary,Simple AST,Python Simple AST,Java Simple AST,JavaScript Simple AST,Multiple AST,Parallel AST,Parallel Multiple AST,Irrelevance Detection
-1,Qwen3-8B (Prompt),31.92%,N/A,N/A,95.00%,N/A,N/A,96.00%,N/A,N/A,N/A
-2,Llama-3.1-8B-Instruct (Prompt),31.67%,N/A,N/A,95.00%,N/A,N/A,95.00%,N/A,N/A,N/A
-3,Gemma-3-12b-it (Prompt),31.50%,N/A,N/A,94.50%,N/A,N/A,94.50%,N/A,N/A,N/A
-4,Qwen3-4B-Instruct-2507 (Prompt),30.69%,N/A,N/A,93.75%,N/A,N/A,91.50%,N/A,N/A,N/A
-5,Gemma-3-4b-it (Prompt),29.96%,N/A,N/A,91.00%,N/A,N/A,89.50%,N/A,N/A,N/A
-6,Gemma-3-1b-it (Prompt),14.00%,N/A,N/A,66.00%,N/A,N/A,34.00%,N/A,N/A,N/A
+1,Qwen3-4B-Instruct-2507 (Prompt),31.50%,N/A,N/A,94.50%,N/A,N/A,94.50%,N/A,N/A,N/A
+2,Gemma-3-12b-it (Prompt),31.21%,N/A,N/A,94.00%,N/A,N/A,93.50%,N/A,N/A,N/A
+3,Llama-3.1-8B-Instruct (Prompt),30.71%,N/A,N/A,94.00%,N/A,N/A,91.50%,N/A,N/A,N/A
+4,Gemma-3-4b-it (Prompt),28.25%,N/A,N/A,91.50%,N/A,N/A,82.50%,N/A,N/A,N/A
+5,Qwen3-8B (Prompt),23.04%,N/A,N/A,95.00%,N/A,N/A,60.50%,N/A,N/A,N/A
+6,Gemma-3-1b-it (Prompt),0.00%,N/A,N/A,0.00%,N/A,N/A,0.00%,N/A,N/A,N/A
