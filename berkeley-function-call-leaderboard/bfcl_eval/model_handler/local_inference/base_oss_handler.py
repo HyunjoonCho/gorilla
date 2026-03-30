@@ -491,7 +491,7 @@ class OSSHandler(BaseHandler, EnforceOverrides):
         function: list[dict],
         max_new_tokens: int,
     ):
-        if self.tool_constraint_engine != "guidance":
+        if self.tool_constraint_engine == "none":
             return self._query_prompting_transformers_unconstrained(
                 formatted_prompt=formatted_prompt,
                 max_new_tokens=max_new_tokens,
