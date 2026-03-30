@@ -28,6 +28,46 @@ if TYPE_CHECKING:
     )
 
 
+def _find_redundant_turn_calls(
+    decoded_model_responses: list[str], seen_calls_in_turn: set[str]
+) -> list[str]:
+    redundant_calls: list[str] = []
+    current_step_calls: set[str] = set()
+
+    for call in decoded_model_responses:
+        if call in seen_calls_in_turn or call in current_step_calls:
+            if call not in redundant_calls:
+                redundant_calls.append(call)
+        current_step_calls.add(call)
+
+    return redundant_calls
+
+
+def _build_redundancy_rejection_results(
+    decoded_model_responses: list[str], redundant_calls: list[str]
+) -> list[str]:
+    redundant_call_text = "; ".join(redundant_calls)
+    rejection_results = []
+
+    for call in decoded_model_responses:
+        rejection_results.append(
+            (
+                "Rejected redundant tool step. This step was not executed because it "
+                f"repeated an exact same-turn call: {redundant_call_text}. "
+                f"Current rejected call: {call}. Choose a different call or stop."
+            )
+        )
+
+    return rejection_results
+
+
+def _should_apply_redundancy_guard(handler: "BaseHandler") -> bool:
+    return getattr(handler, "tool_constraint_engine", "none") in {
+        "guidance",
+        "guidance_tool_only",
+    }
+
+
 class BaseHandler:
     model_name: str
     is_fc_model: bool
@@ -168,6 +208,7 @@ class BaseHandler:
         inference_data: dict = {}
         inference_data = self._pre_query_processing_FC(inference_data, test_entry)
         inference_data = self._compile_tools(inference_data, test_entry)
+        apply_redundancy_guard = _should_apply_redundancy_guard(self)
 
         all_multi_turn_messages: list[list[dict]] = test_entry["question"]
         for turn_idx, current_turn_message in enumerate(all_multi_turn_messages):
@@ -206,6 +247,8 @@ class BaseHandler:
             current_turn_output_token_count: list[float] = []
             current_turn_latency: list[float] = []
             current_turn_reasoning_content = []
+            seen_calls_in_turn: set[str] = set()
+            used_redundant_retry = False
 
             count = 0
             while True:
@@ -239,14 +282,7 @@ class BaseHandler:
                 )
 
                 # Process the metadata
-                current_turn_input_token_count.append(model_response_data["input_token"])
-                current_turn_output_token_count.append(model_response_data["output_token"])
-                current_turn_latency.append(query_latency)
-
-                current_turn_response.append(model_responses)
-
                 reasoning_content = model_response_data.get("reasoning_content", "")
-                current_turn_reasoning_content.append(reasoning_content)
 
                 log_entry = {
                     "role": "assistant",
@@ -292,6 +328,71 @@ class BaseHandler:
                     )
                     break
 
+                if apply_redundancy_guard:
+                    redundant_calls = _find_redundant_turn_calls(
+                        decoded_model_responses, seen_calls_in_turn
+                    )
+                    if redundant_calls:
+                        count += 1
+
+                        if used_redundant_retry:
+                            print("Redundant tool call detected again. End current turn.")
+                            current_step_inference_log.append(
+                                {
+                                    "role": "handler_log",
+                                    "content": "Redundant tool call detected again. End current turn without execution.",
+                                    "model_response_decoded": decoded_model_responses,
+                                    "redundant_calls": redundant_calls,
+                                }
+                            )
+                            break
+
+                        used_redundant_retry = True
+                        rejection_results = _build_redundancy_rejection_results(
+                            decoded_model_responses, redundant_calls
+                        )
+                        inference_data = self._add_execution_results_FC(
+                            inference_data,
+                            rejection_results,
+                            {
+                                **model_response_data,
+                                "model_responses_decoded": decoded_model_responses,
+                            },
+                        )
+                        for rejection_result in rejection_results:
+                            current_step_inference_log.append(
+                                {
+                                    "role": "tool",
+                                    "content": rejection_result,
+                                }
+                            )
+                        current_step_inference_log.append(
+                            {
+                                "role": "handler_log",
+                                "content": "Redundant tool call detected. Retry current turn once without execution.",
+                                "model_response_decoded": decoded_model_responses,
+                                "redundant_calls": redundant_calls,
+                            }
+                        )
+
+                        if count > MAXIMUM_STEP_LIMIT:
+                            force_quit = True
+                            current_step_inference_log.append(
+                                {
+                                    "role": "handler_log",
+                                    "content": f"Model has been forced to quit after {MAXIMUM_STEP_LIMIT} steps.",
+                                }
+                            )
+                            break
+
+                        continue
+
+                current_turn_input_token_count.append(model_response_data["input_token"])
+                current_turn_output_token_count.append(model_response_data["output_token"])
+                current_turn_latency.append(query_latency)
+                current_turn_response.append(model_responses)
+                current_turn_reasoning_content.append(reasoning_content)
+
                 # Obtain the execution results
                 execution_results, involved_instances = execute_multi_turn_func_call(
                     decoded_model_responses,
@@ -318,6 +419,9 @@ class BaseHandler:
                         }
                     )
 
+                if apply_redundancy_guard:
+                    seen_calls_in_turn.update(decoded_model_responses)
+                    used_redundant_retry = False
                 count += 1
                 # Force quit after too many steps
                 if count > MAXIMUM_STEP_LIMIT:
@@ -464,6 +568,7 @@ class BaseHandler:
 
         inference_data: dict = self._pre_query_processing_prompting(test_entry)
 
+        apply_redundancy_guard = _should_apply_redundancy_guard(self)
         all_multi_turn_messages: list[list[dict]] = test_entry["question"]
         for turn_idx, current_turn_message in enumerate(all_multi_turn_messages):
             current_turn_message: list[dict]
@@ -505,6 +610,8 @@ class BaseHandler:
             current_turn_input_token_count: list[float] = []
             current_turn_output_token_count: list[float] = []
             current_turn_latency: list[float] = []
+            seen_calls_in_turn: set[str] = set()
+            used_redundant_retry = False
 
             count = 0
             while True:
@@ -538,13 +645,7 @@ class BaseHandler:
                 )
 
                 # Process the metadata
-                current_turn_input_token_count.append(model_response_data["input_token"])
-                current_turn_output_token_count.append(model_response_data["output_token"])
-                current_turn_latency.append(query_latency)
-
-                current_turn_response.append(model_responses)
                 reasoning_content = model_response_data.get("reasoning_content", "")
-                current_turn_reasoning_content.append(reasoning_content)
 
                 log_entry = {
                     "role": "assistant",
@@ -591,6 +692,71 @@ class BaseHandler:
                     )
                     break
 
+                if apply_redundancy_guard:
+                    redundant_calls = _find_redundant_turn_calls(
+                        decoded_model_responses, seen_calls_in_turn
+                    )
+                    if redundant_calls:
+                        count += 1
+
+                        if used_redundant_retry:
+                            print("Redundant tool call detected again. End current turn.")
+                            current_step_inference_log.append(
+                                {
+                                    "role": "handler_log",
+                                    "content": "Redundant tool call detected again. End current turn without execution.",
+                                    "model_response_decoded": decoded_model_responses,
+                                    "redundant_calls": redundant_calls,
+                                }
+                            )
+                            break
+
+                        used_redundant_retry = True
+                        rejection_results = _build_redundancy_rejection_results(
+                            decoded_model_responses, redundant_calls
+                        )
+                        inference_data = self._add_execution_results_prompting(
+                            inference_data,
+                            rejection_results,
+                            {
+                                **model_response_data,
+                                "model_responses_decoded": decoded_model_responses,
+                            },
+                        )
+                        for rejection_result in rejection_results:
+                            current_step_inference_log.append(
+                                {
+                                    "role": "tool",
+                                    "content": rejection_result,
+                                }
+                            )
+                        current_step_inference_log.append(
+                            {
+                                "role": "handler_log",
+                                "content": "Redundant tool call detected. Retry current turn once without execution.",
+                                "model_response_decoded": decoded_model_responses,
+                                "redundant_calls": redundant_calls,
+                            }
+                        )
+
+                        if count > MAXIMUM_STEP_LIMIT:
+                            force_quit = True
+                            current_step_inference_log.append(
+                                {
+                                    "role": "handler_log",
+                                    "content": f"Model has been forced to quit after {MAXIMUM_STEP_LIMIT} steps.",
+                                }
+                            )
+                            break
+
+                        continue
+
+                current_turn_input_token_count.append(model_response_data["input_token"])
+                current_turn_output_token_count.append(model_response_data["output_token"])
+                current_turn_latency.append(query_latency)
+                current_turn_response.append(model_responses)
+                current_turn_reasoning_content.append(reasoning_content)
+
                 # Obtain the execution results
                 execution_results, involved_instances = execute_multi_turn_func_call(
                     decoded_model_responses,
@@ -617,6 +783,9 @@ class BaseHandler:
                         }
                     )
 
+                if apply_redundancy_guard:
+                    seen_calls_in_turn.update(decoded_model_responses)
+                    used_redundant_retry = False
                 count += 1
                 # Force quit after too many steps
                 if count > MAXIMUM_STEP_LIMIT:
