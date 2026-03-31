@@ -20,10 +20,14 @@ MODELS=(
 
 TASKS=(
   "simple_python"
+  "simple_java"
+  "simple_javascript"
   "live_simple"
   "multiple"
-  "multi_turn_base"
-  "memory_kv"
+  "live_multiple"
+  "format_sensitivity"
+#  "multi_turn_base"
+#  "memory_kv"
 )
 
 failures=()

@@ -11,17 +11,21 @@ SCORE_DIR="${SCORE_DIR:-score_tool_only}"
 
 # Edit these lists as needed for your experiment.
 MODELS=(
-  "meta-llama/Llama-3.1-8B-Instruct"
-  "google/gemma-3-12b-it"
-  "google/gemma-3-4b-it"
+#  "meta-llama/Llama-3.1-8B-Instruct"
+#  "google/gemma-3-12b-it"
+#  "google/gemma-3-4b-it"
   "Qwen/Qwen3-8B"
-  "Qwen/Qwen3-4B-Instruct-2507"
+#  "Qwen/Qwen3-4B-Instruct-2507"
 )
 
 TASKS=(
   "simple_python"
+  "simple_java"
+  "simple_javascript"
   "live_simple"
   "multiple"
+  "live_multiple"
+  "format_sensitivity"
 #  "multi_turn_base"
 #  "memory_kv"
 )
