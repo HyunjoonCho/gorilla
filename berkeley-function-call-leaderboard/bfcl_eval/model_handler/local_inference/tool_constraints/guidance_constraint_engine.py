@@ -6,6 +6,9 @@ from typing import Any, Optional
 
 
 NO_TOOL_SELECTION = "DONE"
+TERMINAL_ANSWER_SELECTOR_HINT = (
+    f"If the assistant should stop calling tools and answer the user directly now, choose {NO_TOOL_SELECTION}."
+)
 INTEGER_PATTERN = r"-?\d+"
 NUMBER_PATTERN = r"-?(?:\d+(?:\.\d+)?|\.\d+)"
 TYPE_MAP = {
@@ -122,17 +125,27 @@ class GuidanceConstraintEngine:
         formatted_prompt: str,
         tools: list[dict],
         max_new_tokens: int,
+        allow_answer: bool = False,
     ) -> tuple[str, dict[str, Any]]:
         tool_map = {tool.get("name"): tool for tool in tools if tool.get("name")}
         if not tool_map:
-            return "[]", {"constraint_engine": self.config.mode, "selected_tools": []}
+            if allow_answer:
+                return self._generate_terminal_answer(formatted_prompt, max_new_tokens)
+            return "[]", {
+                "constraint_engine": self.config.mode,
+                "selected_tools": [],
+                "selected_tool_count": 0,
+                "terminated_with_answer": False,
+            }
 
         if self.config.mode == "guidance_tool_only":
             name = self._select(
-                self._prompt(formatted_prompt, []),
-                [*tool_map],
+                self._prompt(formatted_prompt, [], allow_answer_hint=allow_answer),
+                [*tool_map, *([NO_TOOL_SELECTION] if allow_answer else [])],
                 "tool_name",
             )
+            if name == NO_TOOL_SELECTION:
+                return self._generate_terminal_answer(formatted_prompt, max_new_tokens)
             prefix = f"{name}("
             tail = self._runtime_adapter.gen(
                 formatted_prompt.rstrip() + prefix,
@@ -143,20 +156,26 @@ class GuidanceConstraintEngine:
                 "constraint_engine": "guidance_tool_only",
                 "selected_tools": [name],
                 "selected_tool_count": 1,
+                "terminated_with_answer": False,
             }
 
         selected_calls: list[tuple[str, dict[str, Any]]] = []
-        options = [*tool_map] # exclude NO_TOOL_SELECTION for now
+        options = [*tool_map, *([NO_TOOL_SELECTION] if allow_answer else [])]
         for _ in range(self.config.max_calls_per_step):
             name = self._select(
                 self._prompt(
                     formatted_prompt,
                     selected_calls,
+                    allow_answer_hint=allow_answer,
                 ),
                 options,
                 "tool_name",
             )
             if name == NO_TOOL_SELECTION:
+                if not selected_calls:
+                    return self._generate_terminal_answer(
+                        formatted_prompt, max_new_tokens
+                    )
                 break
             selected_calls.append(
                 (
@@ -175,6 +194,7 @@ class GuidanceConstraintEngine:
             "constraint_engine": "guidance",
             "selected_tools": [name for name, _ in selected_calls],
             "selected_tool_count": len(selected_calls),
+            "terminated_with_answer": False,
         }
 
     def _generate_arguments(
@@ -474,12 +494,32 @@ class GuidanceConstraintEngine:
         formatted_prompt: str,
         selected_calls: list[tuple[str, dict[str, Any]]],
         *lines: str,
+        allow_answer_hint: bool = False,
     ) -> str:
         suffix = []
         if selected_calls:
             suffix.append(f"Previously selected calls: {self._render_calls(selected_calls)}")
         suffix.extend(lines)
+        if allow_answer_hint:
+            suffix.append(TERMINAL_ANSWER_SELECTOR_HINT)
         return formatted_prompt.rstrip() + "\n\n" + "\n".join(suffix) + "\n"
+
+    def _generate_terminal_answer(
+        self,
+        formatted_prompt: str,
+        max_new_tokens: int,
+    ) -> tuple[str, dict[str, Any]]:
+        answer = self._runtime_adapter.gen(
+            formatted_prompt.rstrip(),
+            key="terminal_answer",
+            max_tokens=max_new_tokens,
+        )
+        return answer, {
+            "constraint_engine": self.config.mode,
+            "selected_tools": [],
+            "selected_tool_count": 0,
+            "terminated_with_answer": True,
+        }
 
     @property
     def _runtime_adapter(self) -> PinnedGuidanceRuntime:

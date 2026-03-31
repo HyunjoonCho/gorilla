@@ -567,6 +567,7 @@ class BaseHandler:
                 all_inference_log.append(state_log)
 
         inference_data: dict = self._pre_query_processing_prompting(test_entry)
+        inference_data["allow_guidance_answer"] = is_agentic(test_entry_id)
 
         apply_redundancy_guard = _should_apply_redundancy_guard(self)
         all_multi_turn_messages: list[list[dict]] = test_entry["question"]
@@ -646,6 +647,12 @@ class BaseHandler:
 
                 # Process the metadata
                 reasoning_content = model_response_data.get("reasoning_content", "")
+                guidance_terminal_answer = model_response_data.get(
+                    "guidance_terminal_answer",
+                    getattr(api_response, "guidance_metadata", {}).get(
+                        "terminated_with_answer", False
+                    ),
+                )
 
                 log_entry = {
                     "role": "assistant",
@@ -655,6 +662,24 @@ class BaseHandler:
                     log_entry["reasoning_content"] = reasoning_content
 
                 current_step_inference_log.append(log_entry)
+
+                if guidance_terminal_answer and is_agentic(test_category):
+                    current_turn_input_token_count.append(
+                        model_response_data["input_token"]
+                    )
+                    current_turn_output_token_count.append(
+                        model_response_data["output_token"]
+                    )
+                    current_turn_latency.append(query_latency)
+                    current_turn_response.append(model_responses)
+                    current_turn_reasoning_content.append(reasoning_content)
+                    current_step_inference_log.append(
+                        {
+                            "role": "handler_log",
+                            "content": "Guidance selected a terminal final answer. End current turn without tool execution.",
+                        }
+                    )
+                    break
 
                 # Try decoding the model response
                 try:

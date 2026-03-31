@@ -29,12 +29,19 @@ from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer
 
 
 class _OpenAICompatCompletionResponse:
-    def __init__(self, text: str, prompt_tokens: int, completion_tokens: int):
+    def __init__(
+        self,
+        text: str,
+        prompt_tokens: int,
+        completion_tokens: int,
+        guidance_metadata: Optional[dict[str, Any]] = None,
+    ):
         self.choices = [SimpleNamespace(text=text)]
         self.usage = SimpleNamespace(
             prompt_tokens=prompt_tokens,
             completion_tokens=completion_tokens,
         )
+        self.guidance_metadata = guidance_metadata or {}
 
 
 class OSSHandler(BaseHandler, EnforceOverrides):
@@ -408,6 +415,9 @@ class OSSHandler(BaseHandler, EnforceOverrides):
         # We use the OpenAI Completions API for server backends and direct generation for transformers.
         function: list[dict] = inference_data["function"]
         message: list[dict] = inference_data["message"]
+        allow_guidance_answer = bool(
+            inference_data.get("allow_guidance_answer", False)
+        )
 
         formatted_prompt: str = self._format_prompt(message, function)
         inference_data["inference_input_log"] = {"formatted_prompt": formatted_prompt}
@@ -432,6 +442,7 @@ class OSSHandler(BaseHandler, EnforceOverrides):
                 formatted_prompt=formatted_prompt,
                 function=function,
                 max_new_tokens=leftover_tokens_count,
+                allow_answer=allow_guidance_answer,
             )
         else:
             if self.tool_constraint_engine != "none":
@@ -490,6 +501,7 @@ class OSSHandler(BaseHandler, EnforceOverrides):
         formatted_prompt: str,
         function: list[dict],
         max_new_tokens: int,
+        allow_answer: bool = False,
     ):
         if self.tool_constraint_engine == "none":
             return self._query_prompting_transformers_unconstrained(
@@ -510,6 +522,7 @@ class OSSHandler(BaseHandler, EnforceOverrides):
                 formatted_prompt=formatted_prompt,
                 function=function,
                 max_new_tokens=max_new_tokens,
+                allow_answer=allow_answer,
             )
             return constrained_response
         except GuidanceConstraintError as exc:
@@ -534,14 +547,16 @@ class OSSHandler(BaseHandler, EnforceOverrides):
         formatted_prompt: str,
         function: list[dict],
         max_new_tokens: int,
+        allow_answer: bool = False,
     ) -> _OpenAICompatCompletionResponse:
         constraint_engine = self._get_guidance_constraint_engine()
         lock = self._generation_lock or threading.Lock()
         with lock:
-            constrained_text, _ = constraint_engine.generate(
+            constrained_text, guidance_metadata = constraint_engine.generate(
                 formatted_prompt=formatted_prompt,
                 tools=function,
                 max_new_tokens=max_new_tokens,
+                allow_answer=allow_answer,
             )
         prompt_tokens = len(self.tokenizer.tokenize(formatted_prompt))
         completion_tokens = len(self.tokenizer.tokenize(constrained_text))
@@ -549,6 +564,7 @@ class OSSHandler(BaseHandler, EnforceOverrides):
             text=constrained_text,
             prompt_tokens=prompt_tokens,
             completion_tokens=completion_tokens,
+            guidance_metadata=guidance_metadata,
         )
         return response
 
@@ -656,11 +672,17 @@ class OSSHandler(BaseHandler, EnforceOverrides):
 
     @override
     def _parse_query_response_prompting(self, api_response: Any) -> dict:
-        return {
+        response = {
             "model_responses": api_response.choices[0].text,
             "input_token": api_response.usage.prompt_tokens,
             "output_token": api_response.usage.completion_tokens,
         }
+        guidance_metadata = getattr(api_response, "guidance_metadata", {})
+        if guidance_metadata:
+            response["guidance_terminal_answer"] = guidance_metadata.get(
+                "terminated_with_answer", False
+            )
+        return response
 
     @override
     def add_first_turn_message_prompting(
